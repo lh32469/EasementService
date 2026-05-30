@@ -1,0 +1,140 @@
+package org.gpc4j.easements.controller;
+
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.imageio.ImageIO;
+
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
+import org.gpc4j.easements.model.EasementDoc;
+import org.gpc4j.easements.services.TextractService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import net.ravendb.client.documents.session.IDocumentSession;
+
+/**
+ * REST controller that ingests a scanned easement PDF, extracts text via AWS
+ * Textract, and persists the result as an {@link EasementDoc} in RavenDB with
+ * the rendered page images stored as attachments.
+ */
+@RestController
+@RequestMapping("/api")
+public class EasementController {
+
+  private static final Logger log =
+      LoggerFactory.getLogger(EasementController.class);
+
+  private static final float RENDER_DPI = 150f;
+
+  private final TextractService textractService;
+  private final IDocumentSession session;
+
+  /**
+   * Constructs the controller with its required dependencies.
+   *
+   * @param textractService service used to extract text lines from images
+   * @param session         request-scoped RavenDB session
+   */
+  public EasementController(
+      TextractService textractService,
+      IDocumentSession session) {
+
+    this.textractService = textractService;
+    this.session = session;
+  }
+
+  /**
+   * Accepts a scanned easement PDF, renders each page to a PNG image, extracts
+   * text lines via AWS Textract, and stores the result in RavenDB.
+   *
+   * <p>The {@link EasementDoc} is stored under the original filename as its
+   * document key. Each rendered page is attached to the document as
+   * {@code page-1.png}, {@code page-2.png}, etc.
+   *
+   * @param file the uploaded PDF
+   * @return the RavenDB document ID on success, or 400 if the filename is
+   *         absent
+   * @throws IOException if reading the PDF or rendering a page fails
+   */
+  @PostMapping("/easement")
+  public ResponseEntity<String> ingest(
+      @RequestParam("file") MultipartFile file)
+      throws IOException {
+
+    String filename = file.getOriginalFilename();
+
+    if (filename == null || filename.isBlank()) {
+      return ResponseEntity.badRequest().body("File must have a filename");
+    }
+
+    log.info("Ingesting easement PDF: {}", filename);
+
+    byte[] pdfBytes = file.getBytes();
+    List<String> allLines = new ArrayList<>();
+    List<byte[]> pageImages = new ArrayList<>();
+
+    try (PDDocument pdf = Loader.loadPDF(pdfBytes)) {
+
+      PDFRenderer renderer = new PDFRenderer(pdf);
+      int pageCount = pdf.getNumberOfPages();
+      log.info("PDF has {} page(s)", pageCount);
+
+      for (int i = 0; i < pageCount; i++) {
+        BufferedImage image =
+            renderer.renderImageWithDPI(i, RENDER_DPI, ImageType.RGB);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ImageIO.write(image, "PNG", bos);
+        byte[] imageBytes = bos.toByteArray();
+        pageImages.add(imageBytes);
+
+        log.debug("Page {}: rendered {} bytes, sending to Textract", i + 1,
+            imageBytes.length);
+
+        List<String> lines = textractService.extractLines(imageBytes);
+        allLines.addAll(lines);
+        log.debug("Page {}: extracted {} lines", i + 1, lines.size());
+      }
+    }
+
+    EasementDoc doc = new EasementDoc();
+    doc.setId(filename);
+    doc.setFilename(filename);
+    doc.setLines(allLines);
+    doc.setCreatedAt(Instant.now());
+
+    session.store(doc, filename);
+
+    for (int i = 0; i < pageImages.size(); i++) {
+      String attachmentName = "page-" + (i + 1) + ".png";
+      session.advanced().attachments().store(
+          doc,
+          attachmentName,
+          new ByteArrayInputStream(pageImages.get(i)),
+          "image/png");
+      log.debug("Queued attachment: {}", attachmentName);
+    }
+
+    session.saveChanges();
+    log.info("Stored EasementDoc '{}' with {} line(s) and {} attachment(s)",
+        filename, allLines.size(), pageImages.size());
+
+    return ResponseEntity.ok(filename);
+  }
+
+}
