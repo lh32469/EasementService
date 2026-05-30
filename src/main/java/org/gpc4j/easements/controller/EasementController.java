@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -15,7 +16,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.gpc4j.easements.model.EasementDoc;
-import org.gpc4j.easements.services.TextractService;
+import org.gpc4j.easements.services.TesseractService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -28,9 +29,9 @@ import org.springframework.web.multipart.MultipartFile;
 import net.ravendb.client.documents.session.IDocumentSession;
 
 /**
- * REST controller that ingests a scanned easement PDF, extracts text via AWS
- * Textract, and persists the result as an {@link EasementDoc} in RavenDB with
- * the rendered page images stored as attachments.
+ * REST controller that ingests a scanned easement PDF, extracts text via
+ * Tesseract OCR, and persists the result as an {@link EasementDoc} in RavenDB
+ * with the rendered page images stored as attachments.
  */
 @RestController
 @RequestMapping("/api")
@@ -41,26 +42,26 @@ public class EasementController {
 
   private static final float RENDER_DPI = 150f;
 
-  private final TextractService textractService;
+  private final TesseractService tesseractService;
   private final IDocumentSession session;
 
   /**
    * Constructs the controller with its required dependencies.
    *
-   * @param textractService service used to extract text lines from images
-   * @param session         request-scoped RavenDB session
+   * @param tesseractService service used to extract text lines from images
+   * @param session          request-scoped RavenDB session
    */
   public EasementController(
-      TextractService textractService,
+      TesseractService tesseractService,
       IDocumentSession session) {
 
-    this.textractService = textractService;
+    this.tesseractService = tesseractService;
     this.session = session;
   }
 
   /**
    * Accepts a scanned easement PDF, renders each page to a PNG image, extracts
-   * text lines via AWS Textract, and stores the result in RavenDB.
+   * text lines via Tesseract OCR, and stores the result in RavenDB.
    *
    * <p>The {@link EasementDoc} is stored under the original filename as its
    * document key. Each rendered page is attached to the document as
@@ -69,7 +70,7 @@ public class EasementController {
    * @param file the uploaded PDF
    * @return the RavenDB document ID on success, or 400 if the filename is
    *         absent
-   * @throws IOException if reading the PDF or rendering a page fails
+   * @throws IOException if reading the PDF, rendering a page, or OCR fails
    */
   @PostMapping("/easement")
   public ResponseEntity<String> ingest(
@@ -85,7 +86,8 @@ public class EasementController {
     log.info("Ingesting easement PDF: {}", filename);
 
     byte[] pdfBytes = file.getBytes();
-    List<String> allLines = new ArrayList<>();
+    List<String> allLines = new LinkedList<>();
+    // Index access required (pageImages.get(i)), so ArrayList is correct here.
     List<byte[]> pageImages = new ArrayList<>();
 
     try (PDDocument pdf = Loader.loadPDF(pdfBytes)) {
@@ -103,10 +105,10 @@ public class EasementController {
         byte[] imageBytes = bos.toByteArray();
         pageImages.add(imageBytes);
 
-        log.debug("Page {}: rendered {} bytes, sending to Textract", i + 1,
+        log.debug("Page {}: rendered {} bytes, running OCR", i + 1,
             imageBytes.length);
 
-        List<String> lines = textractService.extractLines(imageBytes);
+        List<String> lines = tesseractService.extractLines(imageBytes);
         allLines.addAll(lines);
         log.debug("Page {}: extracted {} lines", i + 1, lines.size());
       }

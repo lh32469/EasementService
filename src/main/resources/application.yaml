@@ -30,3 +30,9 @@ management:
 ravendb:
   database: DocSearch
 #  urls: injected from Jenkins Global properties RAVENDB_URLS
+
+# Tesseract OCR — path to the tessdata directory containing eng.traineddata.
+# Container (Ubuntu 22.04 + tesseract-ocr apt package): /usr/share/tesseract-ocr/5/tessdata
+# macOS MacPorts: /opt/local/share/tessdata
+tesseract:
+  datapath: /usr/share/tesseract-ocr/5/tessdata
