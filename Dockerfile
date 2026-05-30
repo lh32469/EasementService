@@ -4,6 +4,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       tesseract-ocr \
       tesseract-ocr-eng \
+      libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rm /etc/localtime
@@ -26,4 +27,4 @@ ENV _JAVA_OPTIONS="-XX:+UseShenandoahGC \
 -XX:ShenandoahUncommitDelay=1000 \
 -XX:ShenandoahGuaranteedGCInterval=10000"
 
-CMD ["java", "--add-opens", "java.base/java.lang=ALL-UNNAMED", "-jar", "app.jar" ]
+CMD ["java", "--add-opens", "java.base/java.lang=ALL-UNNAMED", "--enable-native-access=ALL-UNNAMED", "-jar", "app.jar"]

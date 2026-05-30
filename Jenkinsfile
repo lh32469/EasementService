@@ -39,25 +39,18 @@ pipeline {
         }
 
         // Build and push Docker image
-        dockerBuild("${registry}/${project}:${branch}", "Dockerfile.Java25")
+        dockerBuild("${registry}/${project}:${branch}")
 
       }
     }
 
     stage("Deploy") {
       steps {
-        withCredentials([
-            string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
-        ]) {
         // Deploy application
         deploy(
             project: project,
-            branch: branch,
-            envVars: [
-                 'TMDB_API_KEY': env.TMDB_API_KEY
-            ]
+            branch: branch
          )
-        }
 
         ingress(
             project: project,
