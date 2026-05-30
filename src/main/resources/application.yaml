@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: easements
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level %logger{30}.%M - %msg%n"
+  level:
+    com.primefilter:
+      service: INFO
+      controller:
+        MovieController: INFO
+    net.ravendb.client.documents.session.operations: WARN
+
+server:
+  port: 8085
+
+management:
+  server:
+    port: 8090
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# RavenDB Configuration
+ravendb:
+  database: DocSearch
+#  urls: injected from Jenkins Global properties RAVENDB_URLS
