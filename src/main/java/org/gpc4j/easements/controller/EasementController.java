@@ -116,6 +116,7 @@ public class EasementController {
     doc.setId(filename);
     doc.setFilename(filename);
     doc.setLines(allLines);
+    doc.setPageCount(pageImages.size());
     doc.setCreatedAt(Instant.now());
 
     session.store(doc, filename);

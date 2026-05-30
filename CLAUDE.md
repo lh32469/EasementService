@@ -71,6 +71,9 @@ import ordering) are enforced by `config/eclipse-formatter.xml` via
   Include `@param` and `@return` tags where applicable.
 - **Inline comments** — `//` style; explain the *why* when non-obvious.
   Place above the relevant line (not at end-of-line) unless very short.
+- **Collections** — prefer `LinkedList` over `ArrayList` when the list is
+  only appended to and iterated; use `ArrayList` only when index-based
+  access (`get(i)`) is required.
 - **Javadoc on modified classes** — add or update Javadoc and inline
   comments on any new or modified Java class.
   Run `./mvnw spotless:apply` to auto-fix formatting before committing.

@@ -26,6 +26,9 @@ public class EasementDoc {
    */
   private List<String> lines;
 
+  /** Number of pages rendered from the PDF; equals the number of page attachments. */
+  private int pageCount;
+
   /** UTC timestamp recorded when the document was first ingested. */
   private Instant createdAt;
 
