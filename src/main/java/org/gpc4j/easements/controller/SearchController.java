@@ -33,7 +33,7 @@ public class SearchController {
   private static final Logger log =
       LoggerFactory.getLogger(SearchController.class);
 
-  private static final int PAGE_SIZE = 25;
+  private static final int PAGE_SIZE = 15;
 
   /**
    * Matches the boolean operators {@code AND} and {@code OR} (uppercase,
