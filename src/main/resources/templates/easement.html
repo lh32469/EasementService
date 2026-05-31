@@ -270,6 +270,25 @@
       opacity: .75;
       flex-shrink: 0;
     }
+
+    .doc-card-meta {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: .28rem;
+    }
+
+    .conf-badge {
+      font-size: .69rem;
+      letter-spacing: .04em;
+      font-weight: 600;
+      padding: .1em .45em;
+      border-radius: 2px;
+    }
+
+    .conf-high { color: #2a6e35; background: rgba(42,110,53,.1); }
+    .conf-mid  { color: #8b6914; background: rgba(139,105,20,.1); }
+    .conf-low  { color: #963030; background: rgba(150,48,48,.1);  }
   </style>
 </head>
 <body>
@@ -308,9 +327,12 @@
       </a>
       <div class="doc-card-footer">
         <div class="doc-page-label"
-             th:text="'Page ' + ${page.pageNum}"></div>
-        <div class="doc-page-badge"
-             th:text="'of ' + ${page.totalPages}"></div>
+             th:text="'Page ' + ${page.pageNum} + ' of ' + ${page.totalPages}"></div>
+        <div class="doc-card-meta">
+          <span class="conf-badge"
+                th:classappend="${page.confidence >= 80} ? ' conf-high' : (${page.confidence >= 60} ? ' conf-mid' : ' conf-low')"
+                th:text="${#numbers.formatDecimal(page.confidence, 1, 1)} + '%'"></span>
+        </div>
       </div>
     </div>
   </div>

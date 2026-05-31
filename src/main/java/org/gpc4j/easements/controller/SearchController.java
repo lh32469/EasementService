@@ -7,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.gpc4j.easements.model.EasementDoc;
+import org.gpc4j.easements.model.EasementPage;
 import org.gpc4j.easements.model.PageCard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +124,7 @@ public class SearchController {
             "page-1.png",
             1,
             doc.getPageCount(),
-            doc.getConfidence()));
+            avgConfidence(doc)));
       }
     }
 
@@ -162,14 +163,29 @@ public class SearchController {
     }
 
     List<PageCard> pages = new LinkedList<>();
-    for (int i = 1; i <= doc.getPageCount(); i++) {
-      pages.add(new PageCard(
-          doc.getId(),
-          doc.getFilename(),
-          "page-" + i + ".png",
-          i,
-          doc.getPageCount(),
-          doc.getConfidence()));
+    List<EasementPage> docPages = doc.getPages();
+
+    if (docPages != null && !docPages.isEmpty()) {
+      for (EasementPage p : docPages) {
+        pages.add(new PageCard(
+            doc.getId(),
+            doc.getFilename(),
+            "page-" + p.getPageNumber() + ".png",
+            p.getPageNumber(),
+            docPages.size(),
+            p.getConfidence()));
+      }
+    } else {
+      // Legacy document without per-page data: fall back to pageCount
+      for (int i = 1; i <= doc.getPageCount(); i++) {
+        pages.add(new PageCard(
+            doc.getId(),
+            doc.getFilename(),
+            "page-" + i + ".png",
+            i,
+            doc.getPageCount(),
+            0f));
+      }
     }
 
     model.addAttribute("doc", doc);
@@ -224,6 +240,29 @@ public class SearchController {
     }
 
     return nums;
+  }
+
+  /**
+   * Returns the mean OCR confidence across all pages of a document. If the
+   * document pre-dates per-page storage and has no {@code pages} list, returns
+   * 0.
+   *
+   * @param doc the document to evaluate
+   * @return average confidence in the range 0–100
+   */
+  private static float avgConfidence(EasementDoc doc) {
+
+    List<EasementPage> pages = doc.getPages();
+
+    if (pages == null || pages.isEmpty()) {
+      return 0f;
+    }
+
+    float total = 0f;
+    for (EasementPage p : pages) {
+      total += p.getConfidence();
+    }
+    return total / pages.size();
   }
 
   /**

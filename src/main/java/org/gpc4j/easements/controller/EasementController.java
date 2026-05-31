@@ -16,6 +16,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.gpc4j.easements.model.EasementDoc;
+import org.gpc4j.easements.model.EasementPage;
 import org.gpc4j.easements.model.OcrResult;
 import org.gpc4j.easements.services.TesseractService;
 import org.slf4j.Logger;
@@ -61,16 +62,19 @@ public class EasementController {
   }
 
   /**
-   * Accepts a scanned easement PDF, renders each page to a PNG image, extracts
-   * text lines via Tesseract OCR, and stores the result in RavenDB.
+   * Accepts a scanned easement PDF, renders each page to a PNG image, runs
+   * Tesseract OCR, and stores the result in RavenDB.
+   *
+   * <p>Each rendered page produces one {@link EasementPage} stored in
+   * {@link EasementDoc#getPages()}. A denormalised flat {@code lines} list is
+   * also stored on the document so the full-text search query can cover all
+   * pages without nested-field indexing.
    *
    * <p>The {@link EasementDoc} is stored under the original filename as its
-   * document key. Each rendered page is attached to the document as
-   * {@code page-1.png}, {@code page-2.png}, etc.
+   * document key. Each rendered page is attached as {@code page-1.png}, etc.
    *
    * @param file the uploaded PDF
-   * @return the RavenDB document ID on success, or 400 if the filename is
-   *         absent
+   * @return the RavenDB document ID on success, or 400 if the filename is absent
    * @throws IOException if reading the PDF, rendering a page, or OCR fails
    */
   @PostMapping("/easement")
@@ -87,8 +91,8 @@ public class EasementController {
     log.info("Ingesting easement PDF: {}", filename);
 
     byte[] pdfBytes = file.getBytes();
+    List<EasementPage> docPages = new ArrayList<>();
     List<String> allLines = new LinkedList<>();
-    List<Float> pageConfidences = new LinkedList<>();
     // Index access required (pageImages.get(i)), so ArrayList is correct here.
     List<byte[]> pageImages = new ArrayList<>();
 
@@ -111,28 +115,20 @@ public class EasementController {
             imageBytes.length);
 
         OcrResult result = tesseractService.extractText(imageBytes);
+        docPages.add(new EasementPage(i + 1, result.lines(), result.confidence()));
         allLines.addAll(result.lines());
-        pageConfidences.add(result.confidence());
+
         log.debug("Page {}: {} lines, confidence={:.1f}",
             i + 1, result.lines().size(), result.confidence());
       }
     }
 
-    float avgConfidence = 0f;
-    if (!pageConfidences.isEmpty()) {
-      float total = 0f;
-      for (float c : pageConfidences) {
-        total += c;
-      }
-      avgConfidence = total / pageConfidences.size();
-    }
-
     EasementDoc doc = new EasementDoc();
     doc.setId(filename);
     doc.setFilename(filename);
+    doc.setPages(docPages);
     doc.setLines(allLines);
-    doc.setPageCount(pageImages.size());
-    doc.setConfidence(avgConfidence);
+    doc.setPageCount(docPages.size());
     doc.setCreatedAt(Instant.now());
 
     session.store(doc, filename);
@@ -148,8 +144,7 @@ public class EasementController {
     }
 
     session.saveChanges();
-    log.info("Stored EasementDoc '{}' with {} line(s) and {} attachment(s)",
-        filename, allLines.size(), pageImages.size());
+    log.info("Stored EasementDoc '{}' with {} page(s)", filename, docPages.size());
 
     return ResponseEntity.ok(filename);
   }
