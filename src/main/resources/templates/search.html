@@ -409,6 +409,61 @@
       opacity: .75;
       flex-shrink: 0;
     }
+
+    /* ── PAGINATION ──────────────────────────────── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .35rem;
+      padding: 2.5rem 0 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 .6rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: #fff;
+      color: var(--ink);
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: .82rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background .12s, border-color .12s, color .12s;
+      cursor: pointer;
+    }
+
+    .page-btn:hover {
+      background: var(--parchment);
+      border-color: var(--border-dark);
+    }
+
+    .page-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      cursor: default;
+    }
+
+    .page-btn.disabled {
+      color: var(--border-dark);
+      background: #fff;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .page-ellipsis {
+      color: var(--muted);
+      font-size: .85rem;
+      padding: 0 .2rem;
+      line-height: 34px;
+    }
   </style>
 </head>
 <body>
@@ -450,9 +505,10 @@
 <div class="main">
 
   <!-- Result count -->
-  <div th:if="${not #lists.isEmpty(cards)}" class="result-meta">
+  <div th:if="${totalCount > 0}" class="result-meta">
     <span class="result-count">
-      <span th:text="${cards.size()}"></span> page(s) matched
+      Showing <span th:text="${pageStart}"></span>&ndash;<span th:text="${pageEnd}"></span>
+      of <span th:text="${totalCount}"></span> document(s)
     </span>
     <span class="result-sep">&middot;</span>
     <span class="result-q">&ldquo;<span th:text="${query}"></span>&rdquo;</span>
@@ -492,11 +548,10 @@
     </p>
   </div>
 
-  <!-- Card grid -->
-  <div class="card-grid">
+  <!-- Card grid — one card per document, links to full document view -->
+  <div class="card-grid" th:if="${not #lists.isEmpty(cards)}">
     <div th:each="card : ${cards}" class="doc-card">
-      <a th:href="@{/api/easement/attachment(docId=${card.docId},name=${card.attachmentName})}"
-         target="_blank" class="doc-card-link">
+      <a th:href="@{/easement(docId=${card.docId})}" class="doc-card-link">
         <img th:src="@{/api/easement/attachment(docId=${card.docId},name=${card.attachmentName})}"
              class="doc-card-img"
              th:alt="${card.filename}">
@@ -505,10 +560,37 @@
         <div class="doc-filename" th:text="${card.filename}"></div>
         <div th:if="${card.totalPages > 1}"
              class="doc-page-badge"
-             th:text="'Page ' + ${card.pageNum} + ' of ' + ${card.totalPages}"></div>
+             th:text="${card.totalPages} + ' pages'"></div>
       </div>
     </div>
   </div>
+
+  <!-- Pagination -->
+  <nav th:if="${totalPages > 1}" class="pagination" aria-label="Search results pages">
+
+    <!-- Previous -->
+    <a th:if="${currentPage > 1}"
+       th:href="@{/search(q=${query},page=${currentPage - 1})}"
+       class="page-btn" aria-label="Previous page">&larr;</a>
+    <span th:unless="${currentPage > 1}" class="page-btn disabled" aria-disabled="true">&larr;</span>
+
+    <!-- Page numbers (–1 sentinel = ellipsis) -->
+    <th:block th:each="pn : ${pageNumbers}">
+      <span th:if="${pn == -1}" class="page-ellipsis">&hellip;</span>
+      <a th:unless="${pn == -1}"
+         th:href="@{/search(q=${query},page=${pn})}"
+         th:text="${pn}"
+         th:classappend="${pn == currentPage} ? ' active'"
+         class="page-btn"></a>
+    </th:block>
+
+    <!-- Next -->
+    <a th:if="${currentPage < totalPages}"
+       th:href="@{/search(q=${query},page=${currentPage + 1})}"
+       class="page-btn" aria-label="Next page">&rarr;</a>
+    <span th:unless="${currentPage < totalPages}" class="page-btn disabled" aria-disabled="true">&rarr;</span>
+
+  </nav>
 
 </div>
 

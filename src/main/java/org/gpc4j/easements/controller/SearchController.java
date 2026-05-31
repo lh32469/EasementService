@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import net.ravendb.client.documents.operations.attachments.CloseableAttachmentResult;
 import net.ravendb.client.documents.session.IDocumentSession;
+import net.ravendb.client.documents.session.QueryStatistics;
+import net.ravendb.client.primitives.Reference;
 
 /**
  * Controller that serves the Thymeleaf search UI and streams RavenDB document
@@ -30,6 +32,8 @@ public class SearchController {
 
   private static final Logger log =
       LoggerFactory.getLogger(SearchController.class);
+
+  private static final int PAGE_SIZE = 25;
 
   /**
    * Matches the boolean operators {@code AND} and {@code OR} (uppercase,
@@ -66,46 +70,158 @@ public class SearchController {
   /**
    * Renders the search page. When {@code q} is present it translates the
    * user's query into RQL and queries the {@code EasementDocs} collection,
-   * then populates the model with a flat list of {@link PageCard} objects,
-   * one per rendered PDF page across all matching documents.
+   * returning up to {@value #PAGE_SIZE} results per page. Only the first page
+   * of each matching document is shown as a card; clicking a card navigates
+   * to {@code /easement} to view all pages.
    *
    * @param q     optional query string; supports {@code AND}, {@code OR},
    *              wildcards ({@code parcel*}), and phrases ({@code "right of way"})
+   * @param page  1-based page number; defaults to 1
    * @param model Spring MVC model populated for the Thymeleaf template
    * @return the logical view name {@code "search"}
    */
   @GetMapping("/search")
   public String search(
       @RequestParam(required = false) String q,
+      @RequestParam(defaultValue = "1") int page,
       Model model) {
 
     model.addAttribute("query", q != null ? q : "");
     List<PageCard> cards = new LinkedList<>();
+    int totalCount = 0;
+    int totalPages = 0;
 
     if (q != null && !q.isBlank()) {
-      String rql = buildRql(q);
-      log.info("RQL: {}", rql);
+      if (page < 1) {
+        page = 1;
+      }
 
+      String rql = buildRql(q);
+      log.info("RQL: {} (page {})", rql, page);
+
+      Reference<QueryStatistics> statsRef = new Reference<>();
       List<EasementDoc> docs = session.advanced()
           .rawQuery(EasementDoc.class, rql)
+          .statistics(statsRef)
+          .skip((page - 1) * PAGE_SIZE)
+          .take(PAGE_SIZE)
           .toList();
 
-      log.info("Query '{}' returned {} document(s)", q, docs.size());
+      totalCount = statsRef.value.getTotalResults();
+      totalPages = (int) Math.ceil((double) totalCount / PAGE_SIZE);
+
+      if (page > totalPages && totalPages > 0) {
+        page = totalPages;
+      }
+
+      log.info("Query '{}' — {} total, page {}/{}", q, totalCount, page, totalPages);
 
       for (EasementDoc doc : docs) {
-        for (int page = 1; page <= doc.getPageCount(); page++) {
-          cards.add(new PageCard(
-              doc.getId(),
-              doc.getFilename(),
-              "page-" + page + ".png",
-              page,
-              doc.getPageCount()));
-        }
+        cards.add(new PageCard(
+            doc.getId(),
+            doc.getFilename(),
+            "page-1.png",
+            1,
+            doc.getPageCount()));
       }
     }
 
+    int pageStart = totalCount == 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+    int pageEnd = Math.min(page * PAGE_SIZE, totalCount);
+
     model.addAttribute("cards", cards);
+    model.addAttribute("currentPage", page);
+    model.addAttribute("totalPages", totalPages);
+    model.addAttribute("totalCount", totalCount);
+    model.addAttribute("pageStart", pageStart);
+    model.addAttribute("pageEnd", pageEnd);
+    model.addAttribute("pageNumbers", computePageNumbers(page, totalPages));
     return "search";
+  }
+
+  /**
+   * Renders the document view page showing all pages of a single
+   * {@link EasementDoc} as a card grid. Returns a redirect to
+   * {@code /search} if the document ID is not found.
+   *
+   * @param docId the RavenDB document ID (original PDF filename)
+   * @param model Spring MVC model populated for the Thymeleaf template
+   * @return the logical view name {@code "easement"}, or a redirect
+   */
+  @GetMapping("/easement")
+  public String document(
+      @RequestParam String docId,
+      Model model) {
+
+    EasementDoc doc = session.load(EasementDoc.class, docId);
+
+    if (doc == null) {
+      log.warn("Document not found: {}", docId);
+      return "redirect:/search";
+    }
+
+    List<PageCard> pages = new LinkedList<>();
+    for (int i = 1; i <= doc.getPageCount(); i++) {
+      pages.add(new PageCard(
+          doc.getId(),
+          doc.getFilename(),
+          "page-" + i + ".png",
+          i,
+          doc.getPageCount()));
+    }
+
+    model.addAttribute("doc", doc);
+    model.addAttribute("pages", pages);
+    return "easement";
+  }
+
+  /**
+   * Computes the list of page-number buttons to display in the pagination bar.
+   * Returns at most 7 entries; {@code -1} is used as a sentinel for an
+   * ellipsis ({@code …}) between non-adjacent ranges.
+   *
+   * <ul>
+   *   <li>Up to 7 pages: show all.</li>
+   *   <li>Near the start: 1 2 3 4 5 … N</li>
+   *   <li>Near the end: 1 … N-4 N-3 N-2 N-1 N</li>
+   *   <li>Middle: 1 … cur-1 cur cur+1 … N</li>
+   * </ul>
+   *
+   * @param currentPage 1-based current page number
+   * @param totalPages  total number of pages
+   * @return ordered list of page numbers and {@code -1} ellipsis sentinels
+   */
+  static List<Integer> computePageNumbers(int currentPage, int totalPages) {
+
+    List<Integer> nums = new LinkedList<>();
+
+    if (totalPages <= 7) {
+      for (int i = 1; i <= totalPages; i++) {
+        nums.add(i);
+      }
+    } else if (currentPage <= 4) {
+      for (int i = 1; i <= 5; i++) {
+        nums.add(i);
+      }
+      nums.add(-1);
+      nums.add(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      nums.add(1);
+      nums.add(-1);
+      for (int i = totalPages - 4; i <= totalPages; i++) {
+        nums.add(i);
+      }
+    } else {
+      nums.add(1);
+      nums.add(-1);
+      nums.add(currentPage - 1);
+      nums.add(currentPage);
+      nums.add(currentPage + 1);
+      nums.add(-1);
+      nums.add(totalPages);
+    }
+
+    return nums;
   }
 
   /**
