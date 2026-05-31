@@ -1,12 +1,5 @@
 FROM eclipse-temurin:25-jre-noble
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      tesseract-ocr \
-      tesseract-ocr-eng \
-      libtesseract-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN rm /etc/localtime
 RUN ln -s /usr/share/zoneinfo/PST8PDT /etc/localtime
 

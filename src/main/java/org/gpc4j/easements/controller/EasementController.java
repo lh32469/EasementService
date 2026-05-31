@@ -4,9 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -16,9 +14,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.gpc4j.easements.model.EasementDoc;
-import org.gpc4j.easements.model.EasementPage;
-import org.gpc4j.easements.model.OcrResult;
-import org.gpc4j.easements.services.TesseractService;
+import org.gpc4j.easements.services.PaddleOcrService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -31,9 +27,9 @@ import org.springframework.web.multipart.MultipartFile;
 import net.ravendb.client.documents.session.IDocumentSession;
 
 /**
- * REST controller that ingests a scanned easement PDF, extracts text via
- * Tesseract OCR, and persists the result as an {@link EasementDoc} in RavenDB
- * with the rendered page images stored as attachments.
+ * REST controller that ingests a scanned easement PDF. OCR is delegated to the
+ * external PaddleOCR service, which returns a fully-populated {@link EasementDoc}.
+ * Page images are rendered locally via PDFBox and stored as RavenDB attachments.
  */
 @RestController
 @RequestMapping("/api")
@@ -44,38 +40,34 @@ public class EasementController {
 
   private static final float RENDER_DPI = 150f;
 
-  private final TesseractService tesseractService;
+  private final PaddleOcrService paddleOcrService;
   private final IDocumentSession session;
 
   /**
    * Constructs the controller with its required dependencies.
    *
-   * @param tesseractService service used to extract text lines from images
+   * @param paddleOcrService service that posts PDFs to the PaddleOCR endpoint
    * @param session          request-scoped RavenDB session
    */
   public EasementController(
-      TesseractService tesseractService,
+      PaddleOcrService paddleOcrService,
       IDocumentSession session) {
 
-    this.tesseractService = tesseractService;
+    this.paddleOcrService = paddleOcrService;
     this.session = session;
   }
 
   /**
-   * Accepts a scanned easement PDF, renders each page to a PNG image, runs
-   * Tesseract OCR, and stores the result in RavenDB.
+   * Accepts a scanned easement PDF, delegates OCR to the PaddleOCR service,
+   * renders each page to a PNG for storage, and persists the result in RavenDB.
    *
-   * <p>Each rendered page produces one {@link EasementPage} stored in
-   * {@link EasementDoc#getPages()}. A denormalised flat {@code lines} list is
-   * also stored on the document so the full-text search query can cover all
-   * pages without nested-field indexing.
-   *
-   * <p>The {@link EasementDoc} is stored under the original filename as its
-   * document key. Each rendered page is attached as {@code page-1.png}, etc.
+   * <p>The {@link EasementDoc} returned by PaddleOCR is stored under the
+   * original filename as its document key. Each rendered page is attached as
+   * {@code page-1.png}, {@code page-2.png}, etc.
    *
    * @param file the uploaded PDF
    * @return the RavenDB document ID on success, or 400 if the filename is absent
-   * @throws IOException if reading the PDF, rendering a page, or OCR fails
+   * @throws IOException if reading the PDF, rendering a page, or the OCR call fails
    */
   @PostMapping("/easement")
   public ResponseEntity<String> ingest(
@@ -91,11 +83,12 @@ public class EasementController {
     log.info("Ingesting easement PDF: {}", filename);
 
     byte[] pdfBytes = file.getBytes();
-    List<EasementPage> docPages = new ArrayList<>();
-    List<String> allLines = new LinkedList<>();
+
+    EasementDoc doc = paddleOcrService.process(filename, pdfBytes);
+
+    // Render pages locally for RavenDB image attachments.
     // Index access required (pageImages.get(i)), so ArrayList is correct here.
     List<byte[]> pageImages = new ArrayList<>();
-
     try (PDDocument pdf = Loader.loadPDF(pdfBytes)) {
 
       PDFRenderer renderer = new PDFRenderer(pdf);
@@ -108,28 +101,10 @@ public class EasementController {
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ImageIO.write(image, "PNG", bos);
-        byte[] imageBytes = bos.toByteArray();
-        pageImages.add(imageBytes);
-
-        log.debug("Page {}: rendered {} bytes, running OCR", i + 1,
-            imageBytes.length);
-
-        OcrResult result = tesseractService.extractText(imageBytes);
-        docPages.add(new EasementPage(i + 1, result.lines(), result.confidence()));
-        allLines.addAll(result.lines());
-
-        log.debug("Page {}: {} lines, confidence={:.1f}",
-            i + 1, result.lines().size(), result.confidence());
+        pageImages.add(bos.toByteArray());
+        log.debug("Page {}: rendered {} bytes", i + 1, bos.size());
       }
     }
-
-    EasementDoc doc = new EasementDoc();
-    doc.setId(filename);
-    doc.setFilename(filename);
-    doc.setPages(docPages);
-    doc.setLines(allLines);
-    doc.setPageCount(docPages.size());
-    doc.setCreatedAt(Instant.now());
 
     session.store(doc, filename);
 
@@ -144,7 +119,8 @@ public class EasementController {
     }
 
     session.saveChanges();
-    log.info("Stored EasementDoc '{}' with {} page(s)", filename, docPages.size());
+    log.info("Stored EasementDoc '{}' with {} attachment(s)",
+        filename, pageImages.size());
 
     return ResponseEntity.ok(filename);
   }
