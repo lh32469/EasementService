@@ -16,6 +16,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.gpc4j.easements.model.EasementDoc;
+import org.gpc4j.easements.model.OcrResult;
 import org.gpc4j.easements.services.TesseractService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +88,7 @@ public class EasementController {
 
     byte[] pdfBytes = file.getBytes();
     List<String> allLines = new LinkedList<>();
+    List<Float> pageConfidences = new LinkedList<>();
     // Index access required (pageImages.get(i)), so ArrayList is correct here.
     List<byte[]> pageImages = new ArrayList<>();
 
@@ -108,10 +110,21 @@ public class EasementController {
         log.debug("Page {}: rendered {} bytes, running OCR", i + 1,
             imageBytes.length);
 
-        List<String> lines = tesseractService.extractLines(imageBytes);
-        allLines.addAll(lines);
-        log.debug("Page {}: extracted {} lines", i + 1, lines.size());
+        OcrResult result = tesseractService.extractText(imageBytes);
+        allLines.addAll(result.lines());
+        pageConfidences.add(result.confidence());
+        log.debug("Page {}: {} lines, confidence={:.1f}",
+            i + 1, result.lines().size(), result.confidence());
       }
+    }
+
+    float avgConfidence = 0f;
+    if (!pageConfidences.isEmpty()) {
+      float total = 0f;
+      for (float c : pageConfidences) {
+        total += c;
+      }
+      avgConfidence = total / pageConfidences.size();
     }
 
     EasementDoc doc = new EasementDoc();
@@ -119,6 +132,7 @@ public class EasementController {
     doc.setFilename(filename);
     doc.setLines(allLines);
     doc.setPageCount(pageImages.size());
+    doc.setConfidence(avgConfidence);
     doc.setCreatedAt(Instant.now());
 
     session.store(doc, filename);

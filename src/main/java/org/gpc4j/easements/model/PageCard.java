@@ -27,4 +27,7 @@ public class PageCard {
   /** Total pages in the document; used to decide whether to show "page N of M". */
   private int totalPages;
 
+  /** Mean OCR confidence for the document (0–100), averaged across all pages. */
+  private float confidence;
+
 }

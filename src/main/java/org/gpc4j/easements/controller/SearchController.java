@@ -122,7 +122,8 @@ public class SearchController {
             doc.getFilename(),
             "page-1.png",
             1,
-            doc.getPageCount()));
+            doc.getPageCount(),
+            doc.getConfidence()));
       }
     }
 
@@ -167,7 +168,8 @@ public class SearchController {
           doc.getFilename(),
           "page-" + i + ".png",
           i,
-          doc.getPageCount()));
+          doc.getPageCount(),
+          doc.getConfidence()));
     }
 
     model.addAttribute("doc", doc);

@@ -410,6 +410,26 @@
       flex-shrink: 0;
     }
 
+    .doc-card-meta {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: .28rem;
+      flex-wrap: wrap;
+    }
+
+    .conf-badge {
+      font-size: .69rem;
+      letter-spacing: .04em;
+      font-weight: 600;
+      padding: .1em .45em;
+      border-radius: 2px;
+    }
+
+    .conf-high { color: #2a6e35; background: rgba(42,110,53,.1); }
+    .conf-mid  { color: #8b6914; background: rgba(139,105,20,.1); }
+    .conf-low  { color: #963030; background: rgba(150,48,48,.1);  }
+
     /* ── PAGINATION ──────────────────────────────── */
     .pagination {
       display: flex;
@@ -558,9 +578,14 @@
       </a>
       <div class="doc-card-footer">
         <div class="doc-filename" th:text="${card.filename}"></div>
-        <div th:if="${card.totalPages > 1}"
-             class="doc-page-badge"
-             th:text="${card.totalPages} + ' pages'"></div>
+        <div class="doc-card-meta">
+          <span th:if="${card.totalPages > 1}"
+                class="doc-page-badge"
+                th:text="${card.totalPages} + ' pages'"></span>
+          <span class="conf-badge"
+                th:classappend="${card.confidence >= 80} ? ' conf-high' : (${card.confidence >= 60} ? ' conf-mid' : ' conf-low')"
+                th:text="${#numbers.formatDecimal(card.confidence, 1, 1)} + '%'"></span>
+        </div>
       </div>
     </div>
   </div>

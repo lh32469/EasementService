@@ -29,6 +29,12 @@ public class EasementDoc {
   /** Number of pages rendered from the PDF; equals the number of page attachments. */
   private int pageCount;
 
+  /**
+   * Mean Tesseract OCR confidence across all pages (0–100). For multi-page
+   * documents this is the average of the per-page mean word confidences.
+   */
+  private float confidence;
+
   /** UTC timestamp recorded when the document was first ingested. */
   private Instant createdAt;
 

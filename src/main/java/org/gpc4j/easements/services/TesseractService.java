@@ -8,14 +8,17 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 
+import org.gpc4j.easements.model.OcrResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import net.sourceforge.tess4j.ITessAPI;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
+import net.sourceforge.tess4j.Word;
 
 /**
  * Spring service that performs OCR on image bytes using the local Tesseract
@@ -50,14 +53,20 @@ public class TesseractService {
   }
 
   /**
-   * Runs OCR on the supplied PNG or JPEG image bytes and returns the detected
-   * lines of text, with blank lines removed.
+   * Runs OCR on the supplied PNG or JPEG image bytes and returns an
+   * {@link OcrResult} containing the detected text lines and the mean
+   * word-level confidence score.
+   *
+   * <p>Text is extracted via {@code doOCR()} to preserve line structure.
+   * Confidence is derived from a second {@code getWords()} call at the
+   * {@code RIL_WORD} level; if confidence cannot be obtained the score
+   * defaults to 0.
    *
    * @param imageBytes raw image bytes
-   * @return ordered list of non-blank text lines; never null
+   * @return OCR result with non-blank text lines and mean confidence (0–100)
    * @throws IOException if the image cannot be decoded or Tesseract fails
    */
-  public List<String> extractLines(byte[] imageBytes) throws IOException {
+  public OcrResult extractText(byte[] imageBytes) throws IOException {
 
     BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
 
@@ -80,8 +89,40 @@ public class TesseractService {
       }
     }
 
-    log.debug("Extracted {} lines from image", lines.size());
-    return lines;
+    float confidence = computeConfidence(tesseract, image);
+    log.debug("Extracted {} lines, confidence={:.1f}", lines.size(), confidence);
+    return new OcrResult(lines, confidence);
+  }
+
+  /**
+   * Derives the mean word-level confidence for an image by calling
+   * {@code getWords()} at {@code RIL_WORD} granularity. Returns 0 if no
+   * words are detected or if the call fails.
+   *
+   * @param tesseract initialised {@link ITesseract} instance
+   * @param image     image to evaluate
+   * @return mean confidence in the range 0–100
+   */
+  private float computeConfidence(ITesseract tesseract, BufferedImage image) {
+
+    try {
+      List<Word> words =
+          tesseract.getWords(image, ITessAPI.TessPageIteratorLevel.RIL_WORD);
+
+      if (words.isEmpty()) {
+        return 0f;
+      }
+
+      float total = 0f;
+      for (Word word : words) {
+        total += word.getConfidence();
+      }
+      return total / words.size();
+
+    } catch (Exception e) {
+      log.warn("Could not compute OCR confidence: {}", e.getMessage());
+      return 0f;
+    }
   }
 
 }
