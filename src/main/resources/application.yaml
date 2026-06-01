@@ -39,3 +39,4 @@ ravendb:
 paddle:
   ocr:
     url: http://paddleocr.paddleocr-main/api/easement
+    timeout-seconds: 120
