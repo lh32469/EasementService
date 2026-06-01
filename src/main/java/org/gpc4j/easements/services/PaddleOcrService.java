@@ -58,6 +58,10 @@ public class PaddleOcrService {
     this.url = url;
 
     HttpClient jettyClient = new HttpClient();
+    // Idle timeout must match or exceed the read timeout so that a slow
+    // PaddleOCR response (no data flowing while the server processes the PDF)
+    // does not trip Jetty's default 30 s idle-timeout before the response arrives.
+    jettyClient.setIdleTimeout(Duration.ofSeconds(timeoutSeconds).toMillis());
     try {
       jettyClient.start();
     } catch (Exception e) {
