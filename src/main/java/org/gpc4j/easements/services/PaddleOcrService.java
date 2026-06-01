@@ -2,13 +2,14 @@ package org.gpc4j.easements.services;
 
 import java.time.Duration;
 
+import org.eclipse.jetty.client.HttpClient;
 import org.gpc4j.easements.model.EasementDoc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.JettyClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -20,7 +21,13 @@ import org.springframework.web.client.RestClient;
  * a fully-populated {@link EasementDoc} JSON response including per-page text,
  * confidence scores, and a flat {@code lines} list for full-text search.
  *
- * <p>Configure the endpoint and read timeout via {@code application.yaml}:
+ * <p>Uses Jetty's {@link HttpClient} as the underlying transport — the JDK
+ * built-in client does not serialise Spring's {@code MultiValueMap} multipart
+ * body correctly. The Jetty client is started eagerly in the constructor and
+ * configured with an explicit read timeout so that multi-page OCR jobs do not
+ * hit the 10 s Jetty default.
+ *
+ * <p>Configure endpoint and timeout via {@code application.yaml}:
  * <pre>
  * paddle:
  *   ocr:
@@ -38,10 +45,8 @@ public class PaddleOcrService {
   private final RestClient restClient;
 
   /**
-   * Constructs the service with the configured PaddleOCR endpoint and timeout.
-   * Uses {@link JdkClientHttpRequestFactory} with an explicit read timeout so
-   * that multi-page PDF OCR jobs (which can take 60–120 s) do not hit the
-   * default 10 s Jetty client deadline.
+   * Constructs the service, starts the Jetty HTTP client, and wires the
+   * configurable read timeout.
    *
    * @param url            full URL of the PaddleOCR service endpoint
    * @param timeoutSeconds read timeout in seconds (default 120)
@@ -52,7 +57,15 @@ public class PaddleOcrService {
 
     this.url = url;
 
-    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
+    HttpClient jettyClient = new HttpClient();
+    try {
+      jettyClient.start();
+    } catch (Exception e) {
+      throw new IllegalStateException("Could not start Jetty HTTP client", e);
+    }
+
+    JettyClientHttpRequestFactory factory =
+        new JettyClientHttpRequestFactory(jettyClient);
     factory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
 
     this.restClient = RestClient.builder()
