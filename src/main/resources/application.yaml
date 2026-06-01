@@ -39,4 +39,5 @@ ravendb:
 paddle:
   ocr:
     url: http://paddleocr.paddleocr-main/api/easement
+    callback-url: http://easements.easements-main/api/easement/import
     timeout-seconds: 120

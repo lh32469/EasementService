@@ -27,11 +27,12 @@ import org.springframework.web.client.RestClient;
  * configured with an explicit read timeout so that multi-page OCR jobs do not
  * hit the 10 s Jetty default.
  *
- * <p>Configure endpoint and timeout via {@code application.yaml}:
+ * <p>Configure endpoint, callback URL, and timeout via {@code application.yaml}:
  * <pre>
  * paddle:
  *   ocr:
  *     url: http://paddleocr.paddleocr-main/api/easement
+ *     callback-url: http://easements.easements-main/api/easement/import
  *     timeout-seconds: 120
  * </pre>
  */
@@ -42,6 +43,7 @@ public class PaddleOcrService {
       LoggerFactory.getLogger(PaddleOcrService.class);
 
   private final String url;
+  private final String callbackUrl;
   private final RestClient restClient;
 
   /**
@@ -49,13 +51,18 @@ public class PaddleOcrService {
    * configurable read timeout.
    *
    * @param url            full URL of the PaddleOCR service endpoint
+   * @param callbackUrl    URL of this application's {@code /api/easement/import}
+   *                       endpoint; passed to PaddleOCR so it can POST the
+   *                       completed {@link EasementDoc} back asynchronously
    * @param timeoutSeconds read timeout in seconds (default 120)
    */
   public PaddleOcrService(
       @Value("${paddle.ocr.url}") String url,
+      @Value("${paddle.ocr.callback-url}") String callbackUrl,
       @Value("${paddle.ocr.timeout-seconds:120}") int timeoutSeconds) {
 
     this.url = url;
+    this.callbackUrl = callbackUrl;
 
     HttpClient jettyClient = new HttpClient();
     // Idle timeout must match or exceed the read timeout so that a slow
@@ -76,13 +83,14 @@ public class PaddleOcrService {
         .requestFactory(factory)
         .build();
 
-    log.info("PaddleOcrService initialised — url={}, timeout={}s", url, timeoutSeconds);
+    log.info("PaddleOcrService initialised — url={}, callbackUrl={}, timeout={}s",
+        url, callbackUrl, timeoutSeconds);
   }
 
   /**
-   * Posts the supplied PDF bytes to the PaddleOCR service and returns the
-   * resulting {@link EasementDoc}. The service is responsible for page
-   * segmentation, OCR, and confidence scoring.
+   * Posts the supplied PDF bytes to the PaddleOCR service along with the
+   * callback URL so the service can deliver the completed {@link EasementDoc}
+   * back to {@code /api/easement/import}.
    *
    * @param filename original filename of the PDF; sent as the multipart file
    *                 name so the service can populate {@code id} and
@@ -92,7 +100,8 @@ public class PaddleOcrService {
    */
   public EasementDoc process(String filename, byte[] pdfBytes) {
 
-    log.info("Posting {} ({} bytes) to PaddleOCR service", filename, pdfBytes.length);
+    log.info("Posting {} ({} bytes) to PaddleOCR service, callbackUrl={}",
+        filename, pdfBytes.length, callbackUrl);
 
     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
     body.add("file", new ByteArrayResource(pdfBytes) {
@@ -103,6 +112,7 @@ public class PaddleOcrService {
         return filename;
       }
     });
+    body.add("callbackUrl", callbackUrl);
 
     EasementDoc doc = restClient.post()
         .uri(url)
