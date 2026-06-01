@@ -88,17 +88,20 @@ public class PaddleOcrService {
   }
 
   /**
-   * Posts the supplied PDF bytes to the PaddleOCR service along with the
-   * callback URL so the service can deliver the completed {@link EasementDoc}
-   * back to {@code /api/easement/import}.
+   * Posts the supplied PDF bytes and callback URL to the PaddleOCR service.
+   * A {@code 201 Created} response indicates the job was accepted; PaddleOCR
+   * will POST the completed {@link EasementDoc} to {@code callbackUrl}
+   * asynchronously — there is no response body.
+   *
+   * <p>Any non-2xx response causes a {@link org.springframework.web.client.RestClientException}
+   * to be thrown by the underlying {@link RestClient}.
    *
    * @param filename original filename of the PDF; sent as the multipart file
-   *                 name so the service can populate {@code id} and
-   *                 {@code filename} on the response
+   *                 name so PaddleOCR can populate {@code id} and
+   *                 {@code filename} on the callback payload
    * @param pdfBytes raw PDF content
-   * @return populated {@link EasementDoc} as returned by the service
    */
-  public EasementDoc process(String filename, byte[] pdfBytes) {
+  public void process(String filename, byte[] pdfBytes) {
 
     log.info("Posting {} ({} bytes) to PaddleOCR service, callbackUrl={}",
         filename, pdfBytes.length, callbackUrl);
@@ -114,18 +117,14 @@ public class PaddleOcrService {
     });
     body.add("callbackUrl", callbackUrl);
 
-    EasementDoc doc = restClient.post()
+    restClient.post()
         .uri(url)
         .contentType(MediaType.MULTIPART_FORM_DATA)
         .body(body)
         .retrieve()
-        .body(EasementDoc.class);
+        .toBodilessEntity();
 
-    log.info("PaddleOCR returned doc '{}' with {} page(s)",
-        doc != null ? doc.getFilename() : "null",
-        doc != null ? doc.getPageCount() : 0);
-
-    return doc;
+    log.info("PaddleOCR accepted '{}' (201)", filename);
   }
 
 }
