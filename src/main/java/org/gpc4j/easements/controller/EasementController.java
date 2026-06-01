@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -123,6 +124,36 @@ public class EasementController {
         filename, pageImages.size());
 
     return ResponseEntity.ok(filename);
+  }
+
+  /**
+   * Stores a pre-built {@link EasementDoc} JSON object directly in RavenDB,
+   * using {@link EasementDoc#getId()} as the document key. No PDF rendering
+   * or OCR is performed; the caller supplies all fields.
+   *
+   * <p>If the document already exists under the same key it will be
+   * overwritten.
+   *
+   * @param doc the easement document to persist; must have a non-blank {@code id}
+   * @return the stored document ID on success, or 400 if {@code id} is absent
+   */
+  @PostMapping("/easement/import")
+  public ResponseEntity<String> importDoc(
+      @RequestBody EasementDoc doc) {
+
+    String id = doc.getId();
+
+    if (id == null || id.isBlank()) {
+      return ResponseEntity.badRequest().body("EasementDoc must have an id");
+    }
+
+    log.info("Importing EasementDoc '{}'", id);
+
+    session.store(doc, id);
+    session.saveChanges();
+
+    log.info("Stored EasementDoc '{}'", id);
+    return ResponseEntity.ok(id);
   }
 
 }
