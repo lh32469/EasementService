@@ -141,7 +141,7 @@ public class EasementController {
     log.info("Placeholder stored for '{}' with {} attachment(s); awaiting OCR callback",
         filename, pageImages.size());
 
-    return ResponseEntity.accepted().body(filename);
+    return ResponseEntity.accepted().body(filename + "\n");
   }
 
   /**
