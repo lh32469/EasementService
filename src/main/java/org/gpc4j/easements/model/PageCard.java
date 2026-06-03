@@ -27,7 +27,14 @@ public class PageCard {
   /** Total pages in the document; used to decide whether to show "page N of M". */
   private int totalPages;
 
-  /** Mean OCR confidence for the document (0–100), averaged across all pages. */
+  /** Mean OCR confidence for this page (0–100). */
   private float confidence;
+
+  /**
+   * Whether this page's text matched the active search query. Used in the
+   * document detail view to apply a green highlight frame when the document
+   * has more than one page.
+   */
+  private boolean matched;
 
 }

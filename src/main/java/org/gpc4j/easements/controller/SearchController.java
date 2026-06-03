@@ -73,7 +73,7 @@ public class SearchController {
    * user's query into RQL and queries the {@code EasementDocs} collection,
    * returning up to {@value #PAGE_SIZE} results per page. Only the first page
    * of each matching document is shown as a card; clicking a card navigates
-   * to {@code /easement} to view all pages.
+   * to {@code /easement} to view all pages with matched pages highlighted.
    *
    * @param q     optional query string; supports {@code AND}, {@code OR},
    *              wildcards ({@code parcel*}), and phrases ({@code "right of way"})
@@ -124,7 +124,8 @@ public class SearchController {
             "page-1.png",
             1,
             doc.getPageCount(),
-            avgConfidence(doc)));
+            avgConfidence(doc),
+            false));
       }
     }
 
@@ -143,16 +144,20 @@ public class SearchController {
 
   /**
    * Renders the document view page showing all pages of a single
-   * {@link EasementDoc} as a card grid. Returns a redirect to
-   * {@code /search} if the document ID is not found.
+   * {@link EasementDoc} as a card grid. When {@code q} is supplied each
+   * page is tested against the query individually; pages that match are
+   * flagged so the template can apply a green highlight frame.
    *
    * @param docId the RavenDB document ID (original PDF filename)
+   * @param q     optional search query carried from the results page; used
+   *              to determine which pages matched
    * @param model Spring MVC model populated for the Thymeleaf template
    * @return the logical view name {@code "easement"}, or a redirect
    */
   @GetMapping("/easement")
   public String document(
       @RequestParam String docId,
+      @RequestParam(required = false) String q,
       Model model) {
 
     EasementDoc doc = session.load(EasementDoc.class, docId);
@@ -167,16 +172,19 @@ public class SearchController {
 
     if (docPages != null && !docPages.isEmpty()) {
       for (EasementPage p : docPages) {
+        boolean matched = q != null && !q.isBlank()
+            && queryMatchesPage(p, q);
         pages.add(new PageCard(
             doc.getId(),
             doc.getFilename(),
             "page-" + p.getPageNumber() + ".png",
             p.getPageNumber(),
             docPages.size(),
-            p.getConfidence()));
+            p.getConfidence(),
+            matched));
       }
     } else {
-      // Legacy document without per-page data: fall back to pageCount
+      // Legacy document without per-page data: fall back to pageCount.
       for (int i = 1; i <= doc.getPageCount(); i++) {
         pages.add(new PageCard(
             doc.getId(),
@@ -184,26 +192,89 @@ public class SearchController {
             "page-" + i + ".png",
             i,
             doc.getPageCount(),
-            0f));
+            0f,
+            false));
       }
     }
 
     model.addAttribute("doc", doc);
     model.addAttribute("pages", pages);
+    model.addAttribute("query", q != null ? q : "");
     return "easement";
+  }
+
+  /**
+   * Tests whether a single {@link EasementPage}'s text matches the user's
+   * query. Handles the same AND/OR boolean syntax as {@link #buildRql(String)}.
+   * Phrase matching (quoted terms) and wildcards ({@code *}) are also supported.
+   *
+   * @param page the page whose lines are tested
+   * @param q    the raw user query
+   * @return {@code true} if the page text satisfies the query
+   */
+  private static boolean queryMatchesPage(EasementPage page, String q) {
+
+    if (page.getLines() == null || page.getLines().isEmpty()) {
+      return false;
+    }
+
+    String pageText = String.join(" ", page.getLines()).toLowerCase();
+
+    List<String> terms = new LinkedList<>();
+    List<String> ops = new LinkedList<>();
+
+    Matcher m = BOOL_OP.matcher(q);
+    int last = 0;
+    while (m.find()) {
+      terms.add(q.substring(last, m.start()).trim());
+      ops.add(m.group(1).toLowerCase());
+      last = m.end();
+    }
+    terms.add(q.substring(last).trim());
+
+    boolean result = termMatchesText(terms.get(0), pageText);
+    for (int i = 1; i < terms.size(); i++) {
+      boolean termHit = termMatchesText(terms.get(i), pageText);
+      if ("and".equals(ops.get(i - 1))) {
+        result = result && termHit;
+      } else {
+        result = result || termHit;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Tests whether a single query term matches a block of page text. Supports
+   * quoted phrases, {@code *} wildcards, and simple case-insensitive substring
+   * matching.
+   *
+   * @param term the query term (may be quoted or contain {@code *})
+   * @param text the lowercased page text to test against
+   * @return {@code true} if the term matches
+   */
+  private static boolean termMatchesText(String term, String text) {
+
+    String t = term.toLowerCase();
+
+    if (t.startsWith("\"") && t.endsWith("\"")) {
+      return text.contains(t.substring(1, t.length() - 1));
+    }
+
+    if (t.contains("*") || t.contains("?")) {
+      String pattern = ".*"
+          + t.replace(".", "\\.").replace("*", ".*").replace("?", ".")
+          + ".*";
+      return text.matches(pattern);
+    }
+
+    return text.contains(t);
   }
 
   /**
    * Computes the list of page-number buttons to display in the pagination bar.
    * Returns at most 7 entries; {@code -1} is used as a sentinel for an
    * ellipsis ({@code …}) between non-adjacent ranges.
-   *
-   * <ul>
-   *   <li>Up to 7 pages: show all.</li>
-   *   <li>Near the start: 1 2 3 4 5 … N</li>
-   *   <li>Near the end: 1 … N-4 N-3 N-2 N-1 N</li>
-   *   <li>Middle: 1 … cur-1 cur cur+1 … N</li>
-   * </ul>
    *
    * @param currentPage 1-based current page number
    * @param totalPages  total number of pages
@@ -243,12 +314,10 @@ public class SearchController {
   }
 
   /**
-   * Returns the mean OCR confidence across all pages of a document. If the
-   * document pre-dates per-page storage and has no {@code pages} list, returns
-   * 0.
+   * Returns the mean OCR confidence across all pages of a document.
    *
    * @param doc the document to evaluate
-   * @return average confidence in the range 0–100
+   * @return average confidence in the range 0–100, or 0 if no pages
    */
   private static float avgConfidence(EasementDoc doc) {
 
@@ -266,22 +335,21 @@ public class SearchController {
   }
 
   /**
-   * Translates a user-entered query into a RavenDB RQL {@code where} clause.
+   * Translates a user-entered query into a RavenDB RQL {@code where} clause
+   * that searches the nested {@code pages[].lines} field. Each page's lines
+   * are indexed individually by RavenDB, giving both per-page and cumulative
+   * document-level matching.
    *
-   * <p>RavenDB's Corax engine does not parse {@code AND}/{@code OR} inside a
-   * single {@code search()} call — they are treated as stopwords. Boolean
-   * operators must be expressed as separate {@code search()} clauses joined by
-   * RQL {@code and}/{@code or}. This method splits the user's query on
-   * uppercase {@code AND}/{@code OR} operators and builds the clause accordingly.
+   * <p>RavenDB's Corax engine treats {@code AND}/{@code OR} inside a single
+   * {@code search()} call as stopwords, so boolean operators are expressed as
+   * separate {@code search()} clauses.
    *
    * <p>Examples:
    * <ul>
    *   <li>{@code ardmore} →
-   *       {@code from EasementDocs where search(lines, 'ardmore')}</li>
+   *       {@code from EasementDocs where search(pages[].lines, 'ardmore')}</li>
    *   <li>{@code easement AND ardmore} →
-   *       {@code from EasementDocs where search(lines, 'easement') and search(lines, 'ardmore')}</li>
-   *   <li>{@code "right of way" OR grant} →
-   *       {@code from EasementDocs where search(lines, '"right of way"') or search(lines, 'grant')}</li>
+   *       {@code from EasementDocs where search(pages[].lines, 'easement') and search(pages[].lines, 'ardmore')}</li>
    * </ul>
    *
    * @param q the raw query string entered by the user
@@ -306,7 +374,7 @@ public class SearchController {
       if (i > 0) {
         rql.append(' ').append(ops.get(i - 1)).append(' ');
       }
-      rql.append("search(lines, '")
+      rql.append("search(pages[].lines, '")
           .append(terms.get(i).replace("'", "''"))
           .append("')");
     }

@@ -3,6 +3,8 @@ package org.gpc4j.easements.model;
 import java.time.Instant;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import lombok.Data;
 
 /**
@@ -10,12 +12,15 @@ import lombok.Data;
  * PDF. Stored under the original PDF filename as its document key. Rendered
  * page images are stored as named attachments ({@code page-1.png}, …).
  *
- * <p>Per-page text and confidence are available in {@link #pages}. The flat
- * {@link #lines} field is a denormalised concatenation of all page lines kept
- * solely to support the RQL {@code search(lines, …)} query without requiring
- * nested-field indexing.
+ * <p>Full-text search queries {@code pages[].lines} directly via RavenDB's
+ * nested-array indexing; there is no separate denormalised {@code lines} field.
+ *
+ * <p>{@link JsonIgnoreProperties} is set to ignore unknown fields so that
+ * callback payloads from older PaddleOCR service versions that still include
+ * a {@code lines} field are accepted without error.
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class EasementDoc {
 
   /** RavenDB document identifier — set to the original PDF filename. */
@@ -26,17 +31,10 @@ public class EasementDoc {
 
   /**
    * Rich per-page OCR results, one entry per rendered PDF page. Each entry
-   * carries that page's text lines and Tesseract confidence score.
+   * carries that page's text lines and Tesseract/PaddleOCR confidence score.
+   * Full-text search is performed against {@code pages[].lines}.
    */
   private List<EasementPage> pages;
-
-  /**
-   * Denormalised flat list of every text line across all pages, in
-   * page-then-top-to-bottom order. Used by the RQL {@code search(lines, …)}
-   * query so that full-text search covers the entire document without
-   * requiring nested-field indexing.
-   */
-  private List<String> lines;
 
   /** Number of pages rendered from the PDF; equals {@code pages.size()}. */
   private int pageCount;

@@ -289,6 +289,21 @@
     .conf-high { color: #2a6e35; background: rgba(42,110,53,.1); }
     .conf-mid  { color: #8b6914; background: rgba(139,105,20,.1); }
     .conf-low  { color: #963030; background: rgba(150,48,48,.1);  }
+
+    /* ── MATCHED PAGE HIGHLIGHT ── */
+    .doc-card.matched {
+      border-color: #2a6e35;
+      border-width: 2px;
+    }
+
+    .doc-card.matched::before {
+      background: linear-gradient(90deg, #2a6e35, #4caf6a);
+      opacity: 1;
+    }
+
+    .doc-card.matched .doc-card-link {
+      border-bottom-color: #2a6e35;
+    }
   </style>
 </head>
 <body>
@@ -308,17 +323,19 @@
 <!-- ── DOC HEADER ── -->
 <div class="doc-band">
   <div class="doc-band-inner">
-    <a href="/search" class="back-link">Back to Search</a>
+    <a th:href="@{/search(q=${query})}" class="back-link">Back to Search</a>
     <div class="doc-title" th:text="${doc.filename}"></div>
     <div class="doc-meta"
-         th:text="${doc.pageCount} + ' page' + (${doc.pageCount} != 1 ? 's' : '')"></div>
+         th:text="${pages.size()} + ' page' + (${pages.size()} != 1 ? 's' : '')"></div>
   </div>
 </div>
 
 <!-- ── PAGES ── -->
 <div class="main">
   <div class="card-grid">
-    <div th:each="page : ${pages}" class="doc-card">
+    <div th:each="page : ${pages}"
+         class="doc-card"
+         th:classappend="${page.matched and page.totalPages > 1} ? ' matched' : ''">
       <a th:href="@{/api/easement/attachment(docId=${page.docId},name=${page.attachmentName})}"
          target="_blank" class="doc-card-link">
         <img th:src="@{/api/easement/attachment(docId=${page.docId},name=${page.attachmentName})}"

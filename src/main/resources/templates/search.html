@@ -571,7 +571,7 @@
   <!-- Card grid — one card per document, links to full document view -->
   <div class="card-grid" th:if="${not #lists.isEmpty(cards)}">
     <div th:each="card : ${cards}" class="doc-card">
-      <a th:href="@{/easement(docId=${card.docId})}" class="doc-card-link">
+      <a th:href="@{/easement(docId=${card.docId},q=${query})}" class="doc-card-link">
         <img th:src="@{/api/easement/attachment(docId=${card.docId},name=${card.attachmentName})}"
              class="doc-card-img"
              th:alt="${card.filename}">
