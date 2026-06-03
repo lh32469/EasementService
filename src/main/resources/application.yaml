@@ -39,5 +39,5 @@ ravendb:
 paddle:
   ocr:
     url: http://laptop.paddleocr-main/api/easement
-    callback-url: https://paddle.easementservice.mcquarrie.cc/api/easement/import
+    callback-url: https://easementservice.mcquarrie.cc/api/easement/import
     timeout-seconds: 120
