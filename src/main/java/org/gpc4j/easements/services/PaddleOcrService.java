@@ -1,0 +1,130 @@
+package org.gpc4j.easements.services;
+
+import java.time.Duration;
+
+import org.eclipse.jetty.client.HttpClient;
+import org.gpc4j.easements.model.EasementDoc;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.JettyClientHttpRequestFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
+
+/**
+ * Spring service that delegates OCR to an external PaddleOCR microservice.
+ * The service accepts a PDF as a {@code multipart/form-data} POST and returns
+ * a fully-populated {@link EasementDoc} JSON response including per-page text,
+ * confidence scores, and a flat {@code lines} list for full-text search.
+ *
+ * <p>Uses Jetty's {@link HttpClient} as the underlying transport — the JDK
+ * built-in client does not serialise Spring's {@code MultiValueMap} multipart
+ * body correctly. The Jetty client is started eagerly in the constructor and
+ * configured with an explicit read timeout so that multi-page OCR jobs do not
+ * hit the 10 s Jetty default.
+ *
+ * <p>Configure endpoint, callback URL, and timeout via {@code application.yaml}:
+ * <pre>
+ * paddle:
+ *   ocr:
+ *     url: http://paddleocr.paddleocr-main/api/easement
+ *     callback-url: http://easements.easements-main/api/easement/import
+ *     timeout-seconds: 120
+ * </pre>
+ */
+@Service
+public class PaddleOcrService {
+
+  private static final Logger log =
+      LoggerFactory.getLogger(PaddleOcrService.class);
+
+  private final String url;
+  private final String callbackUrl;
+  private final RestClient restClient;
+
+  /**
+   * Constructs the service, starts the Jetty HTTP client, and wires the
+   * configurable read timeout.
+   *
+   * @param url            full URL of the PaddleOCR service endpoint
+   * @param callbackUrl    URL of this application's {@code /api/easement/import}
+   *                       endpoint; passed to PaddleOCR so it can POST the
+   *                       completed {@link EasementDoc} back asynchronously
+   * @param timeoutSeconds read timeout in seconds (default 120)
+   */
+  public PaddleOcrService(
+      @Value("${paddle.ocr.url}") String url,
+      @Value("${paddle.ocr.callback-url}") String callbackUrl,
+      @Value("${paddle.ocr.timeout-seconds:120}") int timeoutSeconds) {
+
+    this.url = url;
+    this.callbackUrl = callbackUrl;
+
+    HttpClient jettyClient = new HttpClient();
+    // Idle timeout must match or exceed the read timeout so that a slow
+    // PaddleOCR response (no data flowing while the server processes the PDF)
+    // does not trip Jetty's default 30 s idle-timeout before the response arrives.
+    jettyClient.setIdleTimeout(Duration.ofSeconds(timeoutSeconds).toMillis());
+    try {
+      jettyClient.start();
+    } catch (Exception e) {
+      throw new IllegalStateException("Could not start Jetty HTTP client", e);
+    }
+
+    JettyClientHttpRequestFactory factory =
+        new JettyClientHttpRequestFactory(jettyClient);
+    factory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
+
+    this.restClient = RestClient.builder()
+        .requestFactory(factory)
+        .build();
+
+    log.info("PaddleOcrService initialised — url={}, callbackUrl={}, timeout={}s",
+        url, callbackUrl, timeoutSeconds);
+  }
+
+  /**
+   * Posts the supplied PDF bytes and callback URL to the PaddleOCR service.
+   * A {@code 201 Created} response indicates the job was accepted; PaddleOCR
+   * will POST the completed {@link EasementDoc} to {@code callbackUrl}
+   * asynchronously — there is no response body.
+   *
+   * <p>Any non-2xx response causes a {@link org.springframework.web.client.RestClientException}
+   * to be thrown by the underlying {@link RestClient}.
+   *
+   * @param filename original filename of the PDF; sent as the multipart file
+   *                 name so PaddleOCR can populate {@code id} and
+   *                 {@code filename} on the callback payload
+   * @param pdfBytes raw PDF content
+   */
+  public void process(String filename, byte[] pdfBytes) {
+
+    log.info("Posting {} ({} bytes) to PaddleOCR service, callbackUrl={}",
+        filename, pdfBytes.length, callbackUrl);
+
+    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    body.add("file", new ByteArrayResource(pdfBytes) {
+
+      @Override
+      public String getFilename() {
+
+        return filename;
+      }
+    });
+    body.add("callbackUrl", callbackUrl);
+
+    restClient.post()
+        .uri(url)
+        .contentType(MediaType.MULTIPART_FORM_DATA)
+        .body(body)
+        .retrieve()
+        .toBodilessEntity();
+
+    log.info("PaddleOCR accepted '{}' (201)", filename);
+  }
+
+}
