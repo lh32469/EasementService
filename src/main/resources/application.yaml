@@ -38,6 +38,6 @@ ravendb:
 # PaddleOCR service — k8s service endpoint that accepts a PDF and returns EasementDoc JSON.
 paddle:
   ocr:
-    url: http://paddleocr.paddleocr-main/api/easement
-    callback-url: http://easementservice.${K8S_NAMESPACE}:8085/api/easement/import
+    url: http://laptop.paddleocr-main/api/easement
+    callback-url: https://paddle.easementservice.mcquarrie.cc/api/easement/import
     timeout-seconds: 120
