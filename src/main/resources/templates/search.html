@@ -16,7 +16,10 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
 
-    gtag('config', 'G-WP324RF71D');
+    gtag('config', 'G-WP324RF71D', {
+      cookie_expires: 365 * 24 * 60 * 60, // 1 year in seconds
+      cookie_flags: 'SameSite=None;Secure'
+    });
   </script>
 
   <style>
