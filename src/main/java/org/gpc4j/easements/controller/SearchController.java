@@ -31,8 +31,7 @@ import net.ravendb.client.primitives.Reference;
 @Controller
 public class SearchController {
 
-  private static final Logger log =
-      LoggerFactory.getLogger(SearchController.class);
+  private static final Logger log = LoggerFactory.getLogger(SearchController.class);
 
   private static final int PAGE_SIZE = 15;
 
@@ -42,8 +41,7 @@ public class SearchController {
    * RavenDB/Corax requires each term to be in its own {@code search()} clause,
    * so we split on these operators and reconstruct the RQL ourselves.
    */
-  private static final Pattern BOOL_OP =
-      Pattern.compile("\\s+(AND|OR)\\s+");
+  private static final Pattern BOOL_OP = Pattern.compile("\\s+(AND|OR)\\s+");
 
   private final IDocumentSession session;
 
@@ -57,6 +55,7 @@ public class SearchController {
     this.session = session;
   }
 
+
   /**
    * Redirects the application root to the search page.
    *
@@ -68,12 +67,17 @@ public class SearchController {
     return "redirect:/search";
   }
 
+
   /**
    * Renders the search page. When {@code q} is present it translates the
    * user's query into RQL and queries the {@code EasementDocs} collection,
    * returning up to {@value #PAGE_SIZE} results per page. Only the first page
    * of each matching document is shown as a card; clicking a card navigates
    * to {@code /easement} to view all pages with matched pages highlighted.
+   *
+   * <p>The model always receives {@code totalDocCount} — the total number of
+   * {@link EasementDoc} records in the collection — so the heading can display
+   * it regardless of whether a search query is active.
    *
    * @param q     optional query string; supports {@code AND}, {@code OR},
    *              wildcards ({@code parcel*}), and phrases ({@code "right of way"})
@@ -83,11 +87,13 @@ public class SearchController {
    */
   @GetMapping("/search")
   public String search(
-      @RequestParam(required = false) String q,
-      @RequestParam(defaultValue = "1") int page,
-      Model model) {
+    @RequestParam(required = false) String q,
+    @RequestParam(defaultValue = "1") int page,
+    Model model) {
 
     model.addAttribute("query", q != null ? q : "");
+    int totalDocCount = session.query(EasementDoc.class).count();
+    model.addAttribute("totalDocCount", totalDocCount);
     List<PageCard> cards = new LinkedList<>();
     int totalCount = 0;
     int totalPages = 0;
@@ -101,12 +107,8 @@ public class SearchController {
       log.info("RQL: {} (page {})", rql, page);
 
       Reference<QueryStatistics> statsRef = new Reference<>();
-      List<EasementDoc> docs = session.advanced()
-          .rawQuery(EasementDoc.class, rql)
-          .statistics(statsRef)
-          .skip((page - 1) * PAGE_SIZE)
-          .take(PAGE_SIZE)
-          .toList();
+      List<EasementDoc> docs = session.advanced().rawQuery(EasementDoc.class, rql)
+        .statistics(statsRef).skip((page - 1) * PAGE_SIZE).take(PAGE_SIZE).toList();
 
       totalCount = statsRef.value.getTotalResults();
       totalPages = (int) Math.ceil((double) totalCount / PAGE_SIZE);
@@ -118,14 +120,8 @@ public class SearchController {
       log.info("Query '{}' — {} total, page {}/{}", q, totalCount, page, totalPages);
 
       for (EasementDoc doc : docs) {
-        cards.add(new PageCard(
-            doc.getId(),
-            doc.getFilename(),
-            "page-1.png",
-            1,
-            doc.getPageCount(),
-            avgConfidence(doc),
-            false));
+        cards.add(new PageCard(doc.getId(), doc.getFilename(), "page-1.png", 1,
+          doc.getPageCount(), avgConfidence(doc), false));
       }
     }
 
@@ -142,6 +138,7 @@ public class SearchController {
     return "search";
   }
 
+
   /**
    * Renders the document view page showing all pages of a single
    * {@link EasementDoc} as a card grid. When {@code q} is supplied each
@@ -156,9 +153,9 @@ public class SearchController {
    */
   @GetMapping("/easement")
   public String document(
-      @RequestParam String docId,
-      @RequestParam(required = false) String q,
-      Model model) {
+    @RequestParam String docId,
+    @RequestParam(required = false) String q,
+    Model model) {
 
     EasementDoc doc = session.load(EasementDoc.class, docId);
 
@@ -172,28 +169,16 @@ public class SearchController {
 
     if (docPages != null && !docPages.isEmpty()) {
       for (EasementPage p : docPages) {
-        boolean matched = q != null && !q.isBlank()
-            && queryMatchesPage(p, q);
-        pages.add(new PageCard(
-            doc.getId(),
-            doc.getFilename(),
-            "page-" + p.getPageNumber() + ".png",
-            p.getPageNumber(),
-            docPages.size(),
-            p.getConfidence(),
-            matched));
+        boolean matched = q != null && !q.isBlank() && queryMatchesPage(p, q);
+        pages.add(new PageCard(doc.getId(), doc.getFilename(),
+          "page-" + p.getPageNumber() + ".png", p.getPageNumber(), docPages.size(),
+          p.getConfidence(), matched));
       }
     } else {
       // Legacy document without per-page data: fall back to pageCount.
       for (int i = 1; i <= doc.getPageCount(); i++) {
-        pages.add(new PageCard(
-            doc.getId(),
-            doc.getFilename(),
-            "page-" + i + ".png",
-            i,
-            doc.getPageCount(),
-            0f,
-            false));
+        pages.add(new PageCard(doc.getId(), doc.getFilename(), "page-" + i + ".png",
+          i, doc.getPageCount(), 0f, false));
       }
     }
 
@@ -202,6 +187,7 @@ public class SearchController {
     model.addAttribute("query", q != null ? q : "");
     return "easement";
   }
+
 
   /**
    * Tests whether a single {@link EasementPage}'s text matches the user's
@@ -244,6 +230,7 @@ public class SearchController {
     return result;
   }
 
+
   /**
    * Tests whether a single query term matches a block of page text. Supports
    * quoted phrases, {@code *} wildcards, and simple case-insensitive substring
@@ -263,13 +250,13 @@ public class SearchController {
 
     if (t.contains("*") || t.contains("?")) {
       String pattern = ".*"
-          + t.replace(".", "\\.").replace("*", ".*").replace("?", ".")
-          + ".*";
+        + t.replace(".", "\\.").replace("*", ".*").replace("?", ".") + ".*";
       return text.matches(pattern);
     }
 
     return text.contains(t);
   }
+
 
   /**
    * Computes the list of page-number buttons to display in the pagination bar.
@@ -313,6 +300,7 @@ public class SearchController {
     return nums;
   }
 
+
   /**
    * Returns the mean OCR confidence across all pages of a document.
    *
@@ -333,6 +321,7 @@ public class SearchController {
     }
     return total / pages.size();
   }
+
 
   /**
    * Translates a user-entered query into a RavenDB RQL {@code where} clause
@@ -374,12 +363,12 @@ public class SearchController {
       if (i > 0) {
         rql.append(' ').append(ops.get(i - 1)).append(' ');
       }
-      rql.append("search(pages[].lines, '")
-          .append(terms.get(i).replace("'", "''"))
-          .append("')");
+      rql.append("search(pages[].lines, '").append(terms.get(i).replace("'", "''"))
+        .append("')");
     }
     return rql.toString();
   }
+
 
   /**
    * Streams a single page-image attachment from RavenDB so the browser can
@@ -394,28 +383,25 @@ public class SearchController {
   @GetMapping("/api/easement/attachment")
   @ResponseBody
   public ResponseEntity<byte[]> getAttachment(
-      @RequestParam String docId,
-      @RequestParam String name)
-      throws IOException {
+    @RequestParam String docId,
+    @RequestParam String name) throws IOException {
 
-    try (CloseableAttachmentResult result =
-        session.advanced().attachments().get(docId, name)) {
+    try (CloseableAttachmentResult result = session.advanced().attachments()
+      .get(docId, name)) {
 
       if (result == null) {
         return ResponseEntity.notFound().build();
       }
 
       byte[] bytes = result.getData().readAllBytes();
-      MediaType contentType =
-          MediaType.parseMediaType(result.getDetails().getContentType());
+      MediaType contentType = MediaType
+        .parseMediaType(result.getDetails().getContentType());
 
-      return ResponseEntity.ok()
-          .contentType(contentType)
-          .body(bytes);
+      return ResponseEntity.ok().contentType(contentType).body(bytes);
 
     } catch (Exception e) {
-      log.warn("Attachment not found: docId='{}' name='{}': {}",
-          docId, name, e.getMessage());
+      log.warn("Attachment not found: docId='{}' name='{}': {}", docId, name,
+        e.getMessage());
       return ResponseEntity.notFound().build();
     }
   }

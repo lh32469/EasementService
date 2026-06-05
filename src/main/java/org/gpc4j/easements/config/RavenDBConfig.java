@@ -1,12 +1,7 @@
 package org.gpc4j.easements.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import net.ravendb.client.documents.DocumentStore;
-import net.ravendb.client.documents.IDocumentStore;
-import net.ravendb.client.documents.session.IDocumentSession;
-import net.ravendb.client.http.ServerNode;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +9,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.annotation.RequestScope;
 
-import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import net.ravendb.client.documents.DocumentStore;
+import net.ravendb.client.documents.IDocumentStore;
+import net.ravendb.client.documents.session.IDocumentSession;
+import net.ravendb.client.http.ServerNode;
 
 /**
  * Configuration class for RavenDB.
@@ -30,7 +31,6 @@ public class RavenDBConfig {
   @Value("${ravendb.urls}")
   private List<String> urls;
 
-
   @Bean
   public IDocumentStore documentStore() {
 
@@ -43,10 +43,10 @@ public class RavenDBConfig {
     ObjectMapper mapper = store.getConventions().getEntityMapper();
     mapper.registerModule(new JavaTimeModule());
 
-//    SimpleModule module = new SimpleModule();
-//    // Format Doubles as Strings in to 4 decimal places
-//    module.addSerializer(Double.class, new CustomDoubleSerializer());
-//    mapper.registerModule(module);
+    //    SimpleModule module = new SimpleModule();
+    //    // Format Doubles as Strings in to 4 decimal places
+    //    module.addSerializer(Double.class, new CustomDoubleSerializer());
+    //    mapper.registerModule(module);
 
     store.initialize();
     return store;

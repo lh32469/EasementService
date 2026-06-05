@@ -507,7 +507,11 @@
   <div class="topbar-brand">
     <div class="topbar-seal">⚖</div>
     <div>
-      <div class="topbar-name">Easement Search</div>
+      <div class="topbar-name">Easement Search
+        <span th:if="${totalDocCount > 0}"
+              th:text="'(' + ${#numbers.formatInteger(totalDocCount, 1, 'COMMA')} + ')'"
+              style="font-size:.75em;font-weight:300;opacity:.55;margin-left:.3em;"></span>
+      </div>
       <div class="topbar-sub">Land Records System</div>
     </div>
   </div>

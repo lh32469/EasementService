@@ -1,7 +1,12 @@
 package org.gpc4j.easements.services;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+
 import org.springframework.stereotype.Service;
+
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -15,10 +20,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-
 @Slf4j
 @Service
 public class S3Service {
@@ -27,16 +28,16 @@ public class S3Service {
     log.info("Creating S3Service..");
   }
 
+
   // Create the S3Client object.
   private S3Client getClient() {
 
     Region region = Region.US_WEST_2;
-    S3Client s3 = S3Client.builder()
-        .region(region)
-        .build();
+    S3Client s3 = S3Client.builder().region(region).build();
 
     return s3;
   }
+
 
   // Get the byte[] from this AWS S3 object.
   public byte[] getObjectBytes(String bucketName, String keyName) {
@@ -44,13 +45,11 @@ public class S3Service {
     S3Client s3 = getClient();
 
     try {
-      GetObjectRequest objectRequest = GetObjectRequest
-          .builder()
-          .key(keyName)
-          .bucket(bucketName)
-          .build();
+      GetObjectRequest objectRequest = GetObjectRequest.builder().key(keyName)
+        .bucket(bucketName).build();
 
-      ResponseBytes<GetObjectResponse> objectBytes = s3.getObjectAsBytes(objectRequest);
+      ResponseBytes<GetObjectResponse> objectBytes = s3
+        .getObjectAsBytes(objectRequest);
       byte[] data = objectBytes.asByteArray();
       return data;
 
@@ -60,6 +59,7 @@ public class S3Service {
     }
     return null;
   }
+
 
   /**
    * Returns the names of all images and data within an XML document.
@@ -74,15 +74,13 @@ public class S3Service {
     List<String> bucketItems = new LinkedList<>();
 
     try {
-      ListObjectsRequest listObjects = ListObjectsRequest
-          .builder()
-          .bucket(bucketName)
-          .build();
+      ListObjectsRequest listObjects = ListObjectsRequest.builder()
+        .bucket(bucketName).build();
 
       ListObjectsResponse res = s3.listObjects(listObjects);
       List<S3Object> objects = res.contents();
 
-      for (ListIterator iterVals = objects.listIterator(); iterVals.hasNext(); ) {
+      for (ListIterator iterVals = objects.listIterator(); iterVals.hasNext();) {
         S3Object myValue = (S3Object) iterVals.next();
         // Push the key to  the list.
         bucketItems.add(myValue.key());
@@ -95,6 +93,7 @@ public class S3Service {
     }
     return null;
   }
+
 
   /**
    * Places a PDF object into an Amazon S3 bucket.
@@ -109,11 +108,9 @@ public class S3Service {
     S3Client s3 = getClient();
 
     try {
-      PutObjectResponse response = s3.putObject(PutObjectRequest.builder()
-              .bucket(bucketName)
-              .key(objectKey)
-              .build(),
-          RequestBody.fromBytes(data));
+      PutObjectResponse response = s3.putObject(
+        PutObjectRequest.builder().bucket(bucketName).key(objectKey).build(),
+        RequestBody.fromBytes(data));
 
       log.info("response = {}", response);
 

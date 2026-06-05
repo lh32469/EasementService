@@ -35,6 +35,7 @@ public class S3Controller {
     this.s3Service = s3Service;
   }
 
+
   /**
    * Accepts a multipart file upload and stores it in the {@code pdx-docs} S3
    * bucket using the original filename as the object key.
@@ -45,9 +46,8 @@ public class S3Controller {
    * @throws IOException if reading the file bytes fails
    */
   @PostMapping("/S3")
-  public ResponseEntity<String> upload(
-      @RequestParam("file") MultipartFile file)
-      throws IOException {
+  public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file)
+    throws IOException {
 
     String key = file.getOriginalFilename();
 

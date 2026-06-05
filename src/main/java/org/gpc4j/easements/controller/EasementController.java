@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.imageio.ImageIO;
 
 import org.apache.pdfbox.Loader;
@@ -42,8 +41,8 @@ import net.ravendb.client.documents.session.IDocumentSession;
 @RequestMapping("/api")
 public class EasementController {
 
-  private static final Logger log =
-      LoggerFactory.getLogger(EasementController.class);
+  private static final Logger log = LoggerFactory
+    .getLogger(EasementController.class);
 
   private static final float RENDER_DPI = 150f;
 
@@ -56,13 +55,13 @@ public class EasementController {
    * @param paddleOcrService service that posts PDFs to the PaddleOCR endpoint
    * @param session          request-scoped RavenDB session
    */
-  public EasementController(
-      PaddleOcrService paddleOcrService,
-      IDocumentSession session) {
+  public EasementController(PaddleOcrService paddleOcrService,
+    IDocumentSession session) {
 
     this.paddleOcrService = paddleOcrService;
     this.session = session;
   }
+
 
   /**
    * Accepts a scanned easement PDF, forwards it to the PaddleOCR service, and
@@ -79,9 +78,8 @@ public class EasementController {
    * @throws IOException if reading or rendering the PDF fails
    */
   @PostMapping("/easement")
-  public ResponseEntity<String> ingest(
-      @RequestParam("file") MultipartFile file)
-      throws IOException {
+  public ResponseEntity<String> ingest(@RequestParam("file") MultipartFile file)
+    throws IOException {
 
     String filename = file.getOriginalFilename();
 
@@ -129,20 +127,19 @@ public class EasementController {
 
     for (int i = 0; i < pageImages.size(); i++) {
       String attachmentName = "page-" + (i + 1) + ".png";
-      session.advanced().attachments().store(
-          placeholder,
-          attachmentName,
-          new ByteArrayInputStream(pageImages.get(i)),
-          "image/png");
+      session.advanced().attachments().store(placeholder, attachmentName,
+        new ByteArrayInputStream(pageImages.get(i)), "image/png");
       log.debug("Queued attachment: {}", attachmentName);
     }
 
     session.saveChanges();
-    log.info("Placeholder stored for '{}' with {} attachment(s); awaiting OCR callback",
-        filename, pageImages.size());
+    log.info(
+      "Placeholder stored for '{}' with {} attachment(s); awaiting OCR callback",
+      filename, pageImages.size());
 
     return ResponseEntity.accepted().body(filename + "\n");
   }
+
 
   /**
    * Stores a pre-built {@link EasementDoc} JSON object directly in RavenDB,
@@ -156,8 +153,7 @@ public class EasementController {
    * @return the stored document ID on success, or 400 if {@code id} is absent
    */
   @PostMapping("/easement/import")
-  public ResponseEntity<String> importDoc(
-      @RequestBody EasementDoc doc) {
+  public ResponseEntity<String> importDoc(@RequestBody EasementDoc doc) {
 
     String id = doc.getId();
 

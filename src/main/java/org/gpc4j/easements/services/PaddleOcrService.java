@@ -39,8 +39,7 @@ import org.springframework.web.client.RestClient;
 @Service
 public class PaddleOcrService {
 
-  private static final Logger log =
-      LoggerFactory.getLogger(PaddleOcrService.class);
+  private static final Logger log = LoggerFactory.getLogger(PaddleOcrService.class);
 
   private final String url;
   private final String callbackUrl;
@@ -56,10 +55,9 @@ public class PaddleOcrService {
    *                       completed {@link EasementDoc} back asynchronously
    * @param timeoutSeconds read timeout in seconds (default 120)
    */
-  public PaddleOcrService(
-      @Value("${paddle.ocr.url}") String url,
-      @Value("${paddle.ocr.callback-url}") String callbackUrl,
-      @Value("${paddle.ocr.timeout-seconds:120}") int timeoutSeconds) {
+  public PaddleOcrService(@Value("${paddle.ocr.url}") String url,
+    @Value("${paddle.ocr.callback-url}") String callbackUrl,
+    @Value("${paddle.ocr.timeout-seconds:120}") int timeoutSeconds) {
 
     this.url = url;
     this.callbackUrl = callbackUrl;
@@ -75,17 +73,16 @@ public class PaddleOcrService {
       throw new IllegalStateException("Could not start Jetty HTTP client", e);
     }
 
-    JettyClientHttpRequestFactory factory =
-        new JettyClientHttpRequestFactory(jettyClient);
+    JettyClientHttpRequestFactory factory = new JettyClientHttpRequestFactory(
+      jettyClient);
     factory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
 
-    this.restClient = RestClient.builder()
-        .requestFactory(factory)
-        .build();
+    this.restClient = RestClient.builder().requestFactory(factory).build();
 
     log.info("PaddleOcrService initialised — url={}, callbackUrl={}, timeout={}s",
-        url, callbackUrl, timeoutSeconds);
+      url, callbackUrl, timeoutSeconds);
   }
+
 
   /**
    * Posts the supplied PDF bytes and callback URL to the PaddleOCR service.
@@ -103,8 +100,8 @@ public class PaddleOcrService {
    */
   public void process(String filename, byte[] pdfBytes) {
 
-    log.info("Posting {} ({} bytes) to PaddleOCR service, callbackUrl={}",
-        filename, pdfBytes.length, callbackUrl);
+    log.info("Posting {} ({} bytes) to PaddleOCR service, callbackUrl={}", filename,
+      pdfBytes.length, callbackUrl);
 
     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
     body.add("file", new ByteArrayResource(pdfBytes) {
@@ -117,12 +114,8 @@ public class PaddleOcrService {
     });
     body.add("callbackUrl", callbackUrl);
 
-    restClient.post()
-        .uri(url)
-        .contentType(MediaType.MULTIPART_FORM_DATA)
-        .body(body)
-        .retrieve()
-        .toBodilessEntity();
+    restClient.post().uri(url).contentType(MediaType.MULTIPART_FORM_DATA).body(body)
+      .retrieve().toBodilessEntity();
 
     log.info("PaddleOCR accepted '{}' (201)", filename);
   }
