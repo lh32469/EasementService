@@ -104,8 +104,8 @@ public class EasementController {
       log.info("PDF has {} page(s)", pageCount);
 
       for (int i = 0; i < pageCount; i++) {
-        BufferedImage image =
-            renderer.renderImageWithDPI(i, RENDER_DPI, ImageType.RGB);
+        BufferedImage image = renderer.renderImageWithDPI(i, RENDER_DPI,
+          ImageType.RGB);
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ImageIO.write(image, "PNG", bos);

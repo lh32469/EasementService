@@ -1,10 +1,12 @@
 package org.gpc4j.easements.config;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.cache.caffeine.CaffeineCache;
+import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.ResponseEntity;
@@ -13,18 +15,26 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
 
 /**
- * Configures the Caffeine-backed cache for RavenDB attachment bytes.
+ * Configures two Caffeine-backed caches:
  *
- * <p>The {@code attachments} cache is weight-bounded at 1 GiB so that
- * accumulated page-image bytes never exceed that threshold regardless of
- * entry count. Each entry is weighed by the length of its {@code byte[]}
- * body; entries expire one hour after they are written.
+ * <ul>
+ *   <li>{@code attachments} — weight-bounded at 1 GiB; each entry is weighed
+ *       by the length of its {@code byte[]} body; entries expire 1 hour after
+ *       write.</li>
+ *   <li>{@code searchResults} — entry-count-bounded at 1 000 results; entries
+ *       expire 5 minutes after write.</li>
+ * </ul>
  */
 @Configuration
+@EnableCaching
 public class CacheConfig {
 
-  /** 1 GiB expressed in bytes. */
-  private static final long MAX_WEIGHT_BYTES = 1_073_741_824L;
+  /**
+   * 1 GiB expressed in bytes.
+   */
+  private static final long ATTACHMENT_MAX_WEIGHT_BYTES = 1_073_741_824L;
+
+  private static final int SEARCH_MAX_ENTRIES = 1_000;
 
   /**
    * Weigher that returns the byte length of a cached
@@ -34,30 +44,37 @@ public class CacheConfig {
    */
   @Bean
   public Weigher<String, ResponseEntity<byte[]>> attachmentWeigher() {
+
     return (key, value) -> {
       byte[] body = value.getBody();
       return body != null ? body.length : 1;
     };
   }
 
+
   /**
-   * {@link CacheManager} for the {@code attachments} cache, weight-capped
-   * at 1 GiB with a 1-hour write expiry.
+   * {@link CacheManager} backed by two independently configured
+   * {@link CaffeineCache} instances.
    *
-   * @param weigher the weigher used to measure each cached entry
+   * @param weigher the weigher used to measure attachment cache entries
    * @return the configured cache manager
    */
   @Bean
   @SuppressWarnings("unchecked")
   public CacheManager cacheManager(Weigher<String, ResponseEntity<byte[]>> weigher) {
 
-    Caffeine<Object, Object> caffeine = Caffeine.newBuilder()
-      .maximumWeight(MAX_WEIGHT_BYTES)
+    var attachmentCache = Caffeine.newBuilder()
+      .maximumWeight(ATTACHMENT_MAX_WEIGHT_BYTES)
       .weigher((Weigher<Object, Object>) (Weigher<?, ?>) weigher)
-      .expireAfterWrite(1, TimeUnit.HOURS);
+      .expireAfterWrite(1, TimeUnit.HOURS).<Object, Object>build();
+    var attachments = new CaffeineCache("attachments", attachmentCache);
 
-    CaffeineCacheManager manager = new CaffeineCacheManager("attachments");
-    manager.setCaffeine(caffeine);
+    var searchCache = Caffeine.newBuilder().maximumSize(SEARCH_MAX_ENTRIES)
+      .expireAfterWrite(5, TimeUnit.MINUTES).<Object, Object>build();
+    var searchResults = new CaffeineCache("searchResults", searchCache);
+
+    SimpleCacheManager manager = new SimpleCacheManager();
+    manager.setCaches(List.of(attachments, searchResults));
     return manager;
   }
 
