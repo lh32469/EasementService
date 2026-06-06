@@ -12,7 +12,6 @@ import org.gpc4j.easements.model.SearchResultData;
 import org.gpc4j.easements.services.SearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -156,15 +155,18 @@ public class SearchController {
    * @return the raw image bytes with the correct {@code Content-Type}, or 404
    * @throws IOException if reading the attachment stream fails
    */
-  @Cacheable(value = "attachments", key = "#docId + ':' + #name")
   @GetMapping("/api/easement/attachment")
   @ResponseBody
   public ResponseEntity<byte[]> getAttachment(
     @RequestParam String docId,
     @RequestParam String name) throws IOException {
 
-    try (CloseableAttachmentResult result = session.advanced().attachments()
-      .get(docId, name)) {
+    // @formatter:off
+    try (CloseableAttachmentResult result =
+           session.advanced()
+             .attachments()
+             .get(docId, name)) {
+      // @formatter:on
 
       if (result == null) {
         return ResponseEntity.notFound().build();
