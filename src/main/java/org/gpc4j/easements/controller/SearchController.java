@@ -3,6 +3,7 @@ package org.gpc4j.easements.controller;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.gpc4j.easements.model.EasementDoc;
 import org.gpc4j.easements.model.EasementPage;
@@ -12,6 +13,7 @@ import org.gpc4j.easements.services.SearchService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -172,7 +174,11 @@ public class SearchController {
       MediaType contentType = MediaType
         .parseMediaType(result.getDetails().getContentType());
 
-      return ResponseEntity.ok().contentType(contentType).body(bytes);
+      // @formatter:off
+      return ResponseEntity.ok()
+        .cacheControl(CacheControl.maxAge(8, TimeUnit.HOURS))
+        .contentType(contentType).body(bytes);
+      // @formatter:on
 
     } catch (Exception e) {
       log.warn("Attachment not found: docId='{}' name='{}': {}", docId, name,
