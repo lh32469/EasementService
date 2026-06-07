@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.gpc4j.easements.model.EasementDoc;
 import org.gpc4j.easements.model.EasementPage;
@@ -33,6 +35,8 @@ import net.ravendb.client.documents.session.IDocumentSession;
 public class SearchController {
 
   private static final Logger log = LoggerFactory.getLogger(SearchController.class);
+
+  private static final Pattern PAGE_NUM = Pattern.compile("page-(\\d+)");
 
   private final IDocumentSession session;
   private final SearchService searchService;
@@ -142,6 +146,54 @@ public class SearchController {
     model.addAttribute("pages", pages);
     model.addAttribute("query", q != null ? q : "");
     return "easement";
+  }
+
+
+  /**
+   * Renders the full-page attachment viewer for a single page image. Provides
+   * rotate and prev/next navigation controls. Redirects to {@code /search} if
+   * the document is not found.
+   *
+   * @param docId the RavenDB document ID (original PDF filename)
+   * @param name  the attachment name, e.g. {@code page-3.png}
+   * @param q     optional search query carried from the results page
+   * @param model Spring MVC model populated for the Thymeleaf template
+   * @return the logical view name {@code "attachment"}, or a redirect
+   */
+  @GetMapping("/easement/attachment")
+  public String viewAttachment(
+    @RequestParam String docId,
+    @RequestParam String name,
+    @RequestParam(required = false) String q,
+    Model model) {
+
+    EasementDoc doc = session.load(EasementDoc.class, docId);
+    if (doc == null) {
+      log.warn("Document not found for attachment view: {}", docId);
+      return "redirect:/search";
+    }
+
+    int pageNum = 1;
+    Matcher m = PAGE_NUM.matcher(name);
+    if (m.find()) {
+      pageNum = Integer.parseInt(m.group(1));
+    }
+
+    int totalPages = (doc.getPages() != null && !doc.getPages().isEmpty())
+      ? doc.getPages().size() : doc.getPageCount();
+
+    model.addAttribute("docId", docId);
+    model.addAttribute("name", name);
+    model.addAttribute("filename", doc.getFilename());
+    model.addAttribute("pageNum", pageNum);
+    model.addAttribute("totalPages", totalPages);
+    model.addAttribute("prevName",
+      pageNum > 1 ? "page-" + (pageNum - 1) + ".png" : null);
+    model.addAttribute("nextName",
+      pageNum < totalPages ? "page-" + (pageNum + 1) + ".png" : null);
+    model.addAttribute("query", q != null ? q : "");
+
+    return "attachment";
   }
 
 
