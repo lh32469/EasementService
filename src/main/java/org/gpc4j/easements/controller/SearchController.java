@@ -178,7 +178,7 @@ public class SearchController {
 
       // @formatter:off
       return ResponseEntity.ok()
-        .cacheControl(CacheControl.maxAge(8, TimeUnit.HOURS))
+        .cacheControl(CacheControl.maxAge(14, TimeUnit.DAYS))
         .contentType(contentType).body(bytes);
       // @formatter:on
 
