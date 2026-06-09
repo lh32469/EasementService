@@ -38,8 +38,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class GeminiService implements AIService {
 
-  private static final Logger log =
-    LoggerFactory.getLogger(GeminiService.class);
+  private static final Logger log = LoggerFactory.getLogger(GeminiService.class);
 
   private static final String GEMINI_URL =
     "https://generativelanguage.googleapis.com"
@@ -49,6 +48,7 @@ public class GeminiService implements AIService {
 
   private final HttpClient http;
   private final String apiKey;
+
 
   /**
    * Creates the service with the given Gemini API key.
@@ -62,6 +62,7 @@ public class GeminiService implements AIService {
     // HTTP/1.1 avoids 503s the Gemini API returns for large payloads over HTTP/2
     this.http = HttpClient.newBuilder().version(Version.HTTP_1_1).build();
   }
+
 
   /**
    * {@inheritDoc}
@@ -78,26 +79,21 @@ public class GeminiService implements AIService {
     if (prompt.getImage() != null && prompt.getImage().length > 0) {
       String mimeType = detectMimeType(prompt.getImage());
       String b64 = Base64.getEncoder().encodeToString(prompt.getImage());
-      parts.add(Map.of("inlineData",
-        Map.of("mimeType", mimeType, "data", b64)));
-      log.debug("Attaching {} image ({} bytes) to Gemini request",
-        mimeType, prompt.getImage().length);
+      parts.add(Map.of("inlineData", Map.of("mimeType", mimeType, "data", b64)));
+      log.debug("Attaching {} image ({} bytes) to Gemini request", mimeType,
+        prompt.getImage().length);
     }
 
     parts.add(Map.of("text", prompt.getText()));
 
-    Map<String, Object> body = Map.of(
-      "contents", List.of(Map.of("parts", parts)));
+    Map<String, Object> body = Map.of("contents", List.of(Map.of("parts", parts)));
 
     String requestJson = MAPPER.writeValueAsString(body);
     log.debug("Sending Gemini request ({} chars)", requestJson.length());
 
-    HttpRequest request = HttpRequest.newBuilder()
-      .uri(URI.create(GEMINI_URL))
-      .header("Content-Type", "application/json")
-      .header("X-goog-api-key", apiKey)
-      .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-      .build();
+    HttpRequest request = HttpRequest.newBuilder().uri(URI.create(GEMINI_URL))
+      .header("Content-Type", "application/json").header("X-goog-api-key", apiKey)
+      .POST(HttpRequest.BodyPublishers.ofString(requestJson)).build();
 
     HttpResponse<String> response = send(request);
 
@@ -109,6 +105,7 @@ public class GeminiService implements AIService {
     }
     return text.asText();
   }
+
 
   /**
    * Sends {@code request} and retries up to two times on a 503 response,
@@ -135,8 +132,8 @@ public class GeminiService implements AIService {
       log.debug("Gemini HTTP {}", response.statusCode());
       if (response.statusCode() != 503 || ++attempts >= 3) {
         if (response.statusCode() != 200) {
-          throw new IOException("Gemini API error "
-            + response.statusCode() + ": " + response.body());
+          throw new IOException(
+            "Gemini API error " + response.statusCode() + ": " + response.body());
         }
         return response;
       }
@@ -161,9 +158,8 @@ public class GeminiService implements AIService {
    */
   private String detectMimeType(byte[] bytes) {
 
-    if (bytes.length >= 4
-        && bytes[0] == (byte) 0x89 && bytes[1] == 'P'
-        && bytes[2] == 'N' && bytes[3] == 'G') {
+    if (bytes.length >= 4 && bytes[0] == (byte) 0x89 && bytes[1] == 'P'
+      && bytes[2] == 'N' && bytes[3] == 'G') {
       return "image/png";
     }
     return "image/jpeg";

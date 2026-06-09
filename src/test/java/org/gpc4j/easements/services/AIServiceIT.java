@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import net.ravendb.client.documents.IDocumentStore;
 
@@ -33,7 +32,6 @@ class AIServiceIT {
   @Autowired
   @Qualifier("anthropicService")
   private AIService aiService;
-
 
   /**
    * Sends {@code image.jpg} from test resources together with the text prompt

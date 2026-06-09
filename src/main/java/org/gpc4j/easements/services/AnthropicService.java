@@ -36,11 +36,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class AnthropicService implements AIService {
 
-  private static final Logger log =
-    LoggerFactory.getLogger(AnthropicService.class);
+  private static final Logger log = LoggerFactory.getLogger(AnthropicService.class);
 
-  private static final String ANTHROPIC_URL =
-    "https://api.anthropic.com/v1/messages";
+  private static final String ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
   private static final String MODEL = "claude-haiku-4-5-20251001";
 
@@ -66,6 +64,7 @@ public class AnthropicService implements AIService {
     this.http = HttpClient.newBuilder().version(Version.HTTP_1_1).build();
   }
 
+
   /**
    * {@inheritDoc}
    *
@@ -81,33 +80,24 @@ public class AnthropicService implements AIService {
     if (prompt.getImage() != null && prompt.getImage().length > 0) {
       String mimeType = detectMimeType(prompt.getImage());
       String b64 = Base64.getEncoder().encodeToString(prompt.getImage());
-      content.add(Map.of(
-        "type", "image",
-        "source", Map.of(
-          "type", "base64",
-          "media_type", mimeType,
-          "data", b64)));
-      log.debug("Attaching {} image ({} bytes) to Anthropic request",
-        mimeType, prompt.getImage().length);
+      content.add(Map.of("type", "image", "source",
+        Map.of("type", "base64", "media_type", mimeType, "data", b64)));
+      log.debug("Attaching {} image ({} bytes) to Anthropic request", mimeType,
+        prompt.getImage().length);
     }
 
     content.add(Map.of("type", "text", "text", prompt.getText()));
 
-    Map<String, Object> body = Map.of(
-      "model", MODEL,
-      "max_tokens", MAX_TOKENS,
+    Map<String, Object> body = Map.of("model", MODEL, "max_tokens", MAX_TOKENS,
       "messages", List.of(Map.of("role", "user", "content", content)));
 
     String requestJson = MAPPER.writeValueAsString(body);
     log.debug("Sending Anthropic request ({} chars)", requestJson.length());
 
-    HttpRequest request = HttpRequest.newBuilder()
-      .uri(URI.create(ANTHROPIC_URL))
-      .header("Content-Type", "application/json")
-      .header("x-api-key", apiKey)
+    HttpRequest request = HttpRequest.newBuilder().uri(URI.create(ANTHROPIC_URL))
+      .header("Content-Type", "application/json").header("x-api-key", apiKey)
       .header("anthropic-version", ANTHROPIC_VERSION)
-      .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-      .build();
+      .POST(HttpRequest.BodyPublishers.ofString(requestJson)).build();
 
     HttpResponse<String> response;
     try {
@@ -132,6 +122,7 @@ public class AnthropicService implements AIService {
     return text.asText();
   }
 
+
   /**
    * Returns {@code "image/png"} when {@code bytes} begins with the PNG magic
    * header ({@code \x89PNG}), {@code "image/jpeg"} otherwise.
@@ -141,9 +132,8 @@ public class AnthropicService implements AIService {
    */
   private String detectMimeType(byte[] bytes) {
 
-    if (bytes.length >= 4
-        && bytes[0] == (byte) 0x89 && bytes[1] == 'P'
-        && bytes[2] == 'N' && bytes[3] == 'G') {
+    if (bytes.length >= 4 && bytes[0] == (byte) 0x89 && bytes[1] == 'P'
+      && bytes[2] == 'N' && bytes[3] == 'G') {
       return "image/png";
     }
     return "image/jpeg";

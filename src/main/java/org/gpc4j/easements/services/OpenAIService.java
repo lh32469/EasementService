@@ -37,8 +37,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class OpenAIService implements AIService {
 
-  private static final Logger log =
-    LoggerFactory.getLogger(OpenAIService.class);
+  private static final Logger log = LoggerFactory.getLogger(OpenAIService.class);
 
   private static final String OPENAI_URL =
     "https://api.openai.com/v1/chat/completions";
@@ -49,6 +48,7 @@ public class OpenAIService implements AIService {
 
   private final HttpClient http;
   private final String apiKey;
+
 
   /**
    * Creates the service with the given OpenAI API key.
@@ -61,6 +61,7 @@ public class OpenAIService implements AIService {
     this.apiKey = apiKey;
     this.http = HttpClient.newBuilder().version(Version.HTTP_1_1).build();
   }
+
 
   /**
    * {@inheritDoc}
@@ -77,28 +78,24 @@ public class OpenAIService implements AIService {
     if (prompt.getImage() != null && prompt.getImage().length > 0) {
       String mimeType = detectMimeType(prompt.getImage());
       String b64 = Base64.getEncoder().encodeToString(prompt.getImage());
-      content.add(Map.of(
-        "type", "image_url",
-        "image_url", Map.of("url", "data:" + mimeType + ";base64," + b64)));
-      log.debug("Attaching {} image ({} bytes) to OpenAI request",
-        mimeType, prompt.getImage().length);
+      content.add(Map.of("type", "image_url", "image_url",
+        Map.of("url", "data:" + mimeType + ";base64," + b64)));
+      log.debug("Attaching {} image ({} bytes) to OpenAI request", mimeType,
+        prompt.getImage().length);
     }
 
     content.add(Map.of("type", "text", "text", prompt.getText()));
 
-    Map<String, Object> body = Map.of(
-      "model", MODEL,
-      "messages", List.of(Map.of("role", "user", "content", content)));
+    Map<String, Object> body = Map.of("model", MODEL, "messages",
+      List.of(Map.of("role", "user", "content", content)));
 
     String requestJson = MAPPER.writeValueAsString(body);
     log.debug("Sending OpenAI request ({} chars)", requestJson.length());
 
-    HttpRequest request = HttpRequest.newBuilder()
-      .uri(URI.create(OPENAI_URL))
+    HttpRequest request = HttpRequest.newBuilder().uri(URI.create(OPENAI_URL))
       .header("Content-Type", "application/json")
       .header("Authorization", "Bearer " + apiKey)
-      .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-      .build();
+      .POST(HttpRequest.BodyPublishers.ofString(requestJson)).build();
 
     HttpResponse<String> response;
     try {
@@ -133,9 +130,8 @@ public class OpenAIService implements AIService {
    */
   private String detectMimeType(byte[] bytes) {
 
-    if (bytes.length >= 4
-        && bytes[0] == (byte) 0x89 && bytes[1] == 'P'
-        && bytes[2] == 'N' && bytes[3] == 'G') {
+    if (bytes.length >= 4 && bytes[0] == (byte) 0x89 && bytes[1] == 'P'
+      && bytes[2] == 'N' && bytes[3] == 'G') {
       return "image/png";
     }
     return "image/jpeg";
