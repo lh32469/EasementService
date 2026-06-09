@@ -6,15 +6,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.gpc4j.easements.model.AIPrompt;
 import org.gpc4j.easements.model.EasementDoc;
-import org.gpc4j.easements.services.PaddleOcrService;
+import org.gpc4j.easements.model.EasementPage;
+import org.gpc4j.easements.services.AIService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -31,11 +36,10 @@ import net.ravendb.client.documents.session.IDocumentSession;
  * REST controller that ingests scanned easement PDFs and accepts direct
  * {@link EasementDoc} imports.
  *
- * <p>PDF ingestion is async: the PDF is forwarded to the PaddleOCR service
- * (which responds {@code 201 Accepted}), page images are rendered locally and
- * stored as RavenDB attachments on a placeholder document, and a
- * {@code 202 Accepted} is returned. PaddleOCR delivers the completed
- * {@link EasementDoc} via the {@code /api/easement/import} callback.
+ * <p>PDF ingestion is synchronous: each PDF page is rendered locally to a PNG
+ * image, submitted to {@link AIService} for text extraction, and the resulting
+ * text lines are stored in a fully-populated {@link EasementDoc} in RavenDB.
+ * Page images are stored as RavenDB attachments on the same document.
  */
 @RestController
 @RequestMapping("/api")
@@ -46,36 +50,40 @@ public class EasementController {
 
   private static final float RENDER_DPI = 150f;
 
-  private final PaddleOcrService paddleOcrService;
+  private static final String OCR_PROMPT =
+    "Read all text from this easement document page image. "
+      + "Return only the text content, one line per line, exactly as it appears. "
+      + "Do not add any commentary or formatting.";
+
+  private final AIService aiService;
   private final IDocumentSession session;
 
   /**
    * Constructs the controller with its required dependencies.
    *
-   * @param paddleOcrService service that posts PDFs to the PaddleOCR endpoint
-   * @param session          request-scoped RavenDB session
+   * @param aiService service that extracts text from page images via AI vision
+   * @param session   request-scoped RavenDB session
    */
-  public EasementController(PaddleOcrService paddleOcrService,
-    IDocumentSession session) {
+  public EasementController(AIService aiService, IDocumentSession session) {
 
-    this.paddleOcrService = paddleOcrService;
+    this.aiService = aiService;
     this.session = session;
   }
 
 
   /**
-   * Accepts a scanned easement PDF, forwards it to the PaddleOCR service, and
-   * stores a placeholder {@link EasementDoc} in RavenDB with the rendered page
-   * images as attachments. Returns {@code 202 Accepted} immediately; the
-   * PaddleOCR service populates the full document data via the import callback.
+   * Accepts a scanned easement PDF, renders each page to a PNG image, submits
+   * each image to {@link AIService} for text extraction, and stores the
+   * resulting {@link EasementDoc} in RavenDB with the page images as
+   * attachments.
    *
-   * <p>RavenDB preserves attachments when a document is later overwritten by
-   * the callback, so the page images remain accessible once OCR completes.
+   * <p>Processing is synchronous; the response is returned only after all pages
+   * have been processed and the document has been persisted.
    *
    * @param file the uploaded PDF
    * @return {@code 202 Accepted} with the document ID, or {@code 400} if the
    *         filename is absent
-   * @throws IOException if reading or rendering the PDF fails
+   * @throws IOException if reading, rendering, or AI text extraction fails
    */
   @PostMapping("/easement")
   public ResponseEntity<String> ingest(@RequestParam("file") MultipartFile file)
@@ -91,10 +99,6 @@ public class EasementController {
 
     byte[] pdfBytes = file.getBytes();
 
-    // Submit to PaddleOCR; throws RestClientException on non-2xx.
-    paddleOcrService.process(filename, pdfBytes);
-
-    // Render pages locally so attachments can be stored immediately.
     // Index access required (pageImages.get(i)), so ArrayList is correct here.
     List<byte[]> pageImages = new ArrayList<>();
     try (PDDocument pdf = Loader.loadPDF(pdfBytes)) {
@@ -114,28 +118,46 @@ public class EasementController {
       }
     }
 
-    // Store a placeholder document so attachments have a document to live on.
-    // The PaddleOCR callback will overwrite this with full OCR data; RavenDB
-    // preserves attachments across document updates.
-    EasementDoc placeholder = new EasementDoc();
-    placeholder.setId(filename);
-    placeholder.setFilename(filename);
-    placeholder.setPageCount(pageImages.size());
-    placeholder.setCreatedAt(Instant.now());
+    List<EasementPage> pages = new LinkedList<>();
+    for (int i = 0; i < pageImages.size(); i++) {
+      int pageNumber = i + 1;
+      log.info("Extracting text from page {}/{}", pageNumber, pageImages.size());
 
-    session.store(placeholder, filename);
+      AIPrompt prompt = AIPrompt.builder()
+        .text(OCR_PROMPT)
+        .image(pageImages.get(i))
+        .build();
+
+      String aiText = aiService.query(prompt);
+      log.debug("Page {}: AI returned {} chars", pageNumber, aiText.length());
+
+      List<String> lines = Arrays.stream(aiText.split("\n"))
+        .map(String::trim)
+        .filter(l -> !l.isBlank())
+        .collect(Collectors.toCollection(LinkedList::new));
+
+      pages.add(new EasementPage(pageNumber, lines, 0f));
+    }
+
+    EasementDoc doc = new EasementDoc();
+    doc.setId(filename);
+    doc.setFilename(filename);
+    doc.setPages(pages);
+    doc.setPageCount(pages.size());
+    doc.setCreatedAt(Instant.now());
+
+    session.store(doc, filename);
 
     for (int i = 0; i < pageImages.size(); i++) {
       String attachmentName = "page-" + (i + 1) + ".png";
-      session.advanced().attachments().store(placeholder, attachmentName,
+      session.advanced().attachments().store(doc, attachmentName,
         new ByteArrayInputStream(pageImages.get(i)), "image/png");
       log.debug("Queued attachment: {}", attachmentName);
     }
 
     session.saveChanges();
-    log.info(
-      "Placeholder stored for '{}' with {} attachment(s); awaiting OCR callback",
-      filename, pageImages.size());
+    log.info("Stored '{}' with {} page(s) and {} attachment(s)",
+      filename, pages.size(), pageImages.size());
 
     return ResponseEntity.accepted().body(filename + "\n");
   }
