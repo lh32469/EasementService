@@ -6,44 +6,49 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.InputStream;
 
 import org.gpc4j.easements.model.AIPrompt;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import net.ravendb.client.documents.IDocumentStore;
 
 /**
- * Integration test for {@link AIService}. Opens a real Safari WebDriver
- * session and submits a prompt to ChatGPT. Requires Safari WebDriver to be
- * enabled ({@code safaridriver --enable}) and an active ChatGPT login in
- * Safari before running.
+ * Integration test for the {@link AIService} interface as implemented by
+ * {@link GeminiService}. Sends real HTTP requests to the Google Gemini API
+ * using the Spring application context. The API key is read from
+ * {@code gemini.api.key} in {@code application.yaml}.
+ *
+ * <p>{@link IDocumentStore} is mocked so RavenDB does not need to be
+ * running. The {@code ravendb.urls} placeholder is satisfied via the
+ * {@code properties} attribute to prevent conte  xt startup failure.
  *
  * <p>Run manually with:
  * {@code ./mvnw test -Dtest=AIServiceIT}
  */
+@SpringBootTest(properties = "ravendb.urls=http://localhost:8080")
 class AIServiceIT {
 
-  private final AIService aiService = new AIService();
-
-  /** Closes the Safari WebDriver session after each test. */
-  @AfterEach
-  void tearDown() {
-
-    aiService.shutdown();
-  }
+  @Autowired
+  @Qualifier("anthropicService")
+  private AIService aiService;
 
 
   /**
-   * Sends {@code file.png} from test resources together with the text prompt
-   * {@code "read the text from this image"} to ChatGPT and asserts that a
+   * Sends {@code image.jpg} from test resources together with the text prompt
+   * {@code "read the text from this image"} to Gemini and asserts that a
    * non-blank response is returned.
    *
-   * @throws Exception if the image cannot be loaded or the WebDriver
-   *                   interaction fails
+   * @throws Exception if the image cannot be loaded or the Gemini API call
+   *                   fails
    */
   @Test
-  void queryChatGPTWithImageAndText() throws Exception {
+  void queryGeminiWithImageAndText() throws Exception {
 
     byte[] image;
-    try (InputStream in = getClass().getResourceAsStream("/file.png")) {
-      assertNotNull(in, "file.png must be present in src/test/resources");
+    try (InputStream in = getClass().getResourceAsStream("/image.jpg")) {
+      assertNotNull(in, "image.jpg must be present in src/test/resources");
       image = in.readAllBytes();
     }
 
@@ -52,7 +57,35 @@ class AIServiceIT {
 
     String response = aiService.query(prompt);
 
-    System.out.println("ChatGPT response:\n" + response);
+    System.out.println("Gemini response:\n" + response);
+    assertNotNull(response, "Response must not be null");
+    assertFalse(response.isBlank(), "Response must not be blank");
+  }
+
+
+  /**
+   * Sends {@code cursive.png} from test resources together with the text
+   * prompt {@code "read the text from this image"} to Gemini and asserts that
+   * a non-blank response is returned.
+   *
+   * @throws Exception if the image cannot be loaded or the Gemini API call
+   *                   fails
+   */
+  @Test
+  void cursiveTest() throws Exception {
+
+    byte[] image;
+    try (InputStream in = getClass().getResourceAsStream("/cursive.png")) {
+      assertNotNull(in, "cursive.png must be present in src/test/resources");
+      image = in.readAllBytes();
+    }
+
+    AIPrompt prompt = AIPrompt.builder().text("read the text from this image")
+      .image(image).build();
+
+    String response = aiService.query(prompt);
+
+    System.out.println("Gemini response:\n" + response);
     assertNotNull(response, "Response must not be null");
     assertFalse(response.isBlank(), "Response must not be blank");
   }

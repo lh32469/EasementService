@@ -76,4 +76,3 @@ import ordering) are enforced by `config/eclipse-formatter.xml` via
   access (`get(i)`) is required.
 - **Javadoc on modified classes** — add or update Javadoc and inline
   comments on any new or modified Java class.
-  Run `./mvnw spotless:apply` to auto-fix formatting before committing.
