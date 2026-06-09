@@ -6,10 +6,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 
 import org.apache.pdfbox.Loader;
@@ -51,8 +51,13 @@ public class EasementController {
   private static final float RENDER_DPI = 150f;
 
   private static final String OCR_PROMPT = "Read all text from this easement document page image. "
-    + "Return only the text content, one line per line, exactly as it appears. "
-    + "Do not add any commentary or formatting.";
+    + "Return the text content, one line per line, exactly as it appears. "
+    + "After the extracted text, add a line: CONFIDENCE: NN% where NN reflects "
+    + "how clearly the text was readable in percentage.";
+
+  /** Matches the AI-appended confidence line, e.g. {@code CONFIDENCE: 87%}. */
+  private static final Pattern CONFIDENCE_PATTERN = Pattern
+    .compile("CONFIDENCE:\\s*(\\d+(?:\\.\\d+)?)%", Pattern.CASE_INSENSITIVE);
 
   private final AIService aiService;
   private final IDocumentSession session;
@@ -81,7 +86,7 @@ public class EasementController {
    *
    * @param file the uploaded PDF
    * @return {@code 202 Accepted} with the document ID, or {@code 400} if the
-   * filename is absent
+   *         filename is absent
    * @throws IOException if reading, rendering, or AI text extraction fails
    */
   @PostMapping("/easement")
@@ -128,10 +133,25 @@ public class EasementController {
       String aiText = aiService.query(prompt);
       log.debug("Page {}: AI returned {} chars", pageNumber, aiText.length());
 
-      List<String> lines = Arrays.stream(aiText.split("\n")).map(String::trim)
-        .filter(l -> !l.isBlank()).collect(Collectors.toCollection(LinkedList::new));
+      // Split response into lines; detect and strip the CONFIDENCE trailer.
+      float confidence = 0f;
+      List<String> lines = new LinkedList<>();
+      for (String raw : aiText.split("\n")) {
+        String trimmed = raw.trim();
+        if (trimmed.isBlank()) {
+          continue;
+        }
+        Matcher cm = CONFIDENCE_PATTERN.matcher(trimmed);
+        if (cm.find()) {
+          confidence = Float.parseFloat(cm.group(1));
+        } else {
+          lines.add(trimmed);
+        }
+      }
 
-      pages.add(new EasementPage(pageNumber, lines, 0f));
+      log.debug("Page {}: {} lines, confidence {}%", pageNumber, lines.size(),
+        confidence);
+      pages.add(new EasementPage(pageNumber, lines, confidence));
     }
 
     EasementDoc doc = new EasementDoc();

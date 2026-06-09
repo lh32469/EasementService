@@ -135,24 +135,81 @@
       flex-shrink: 0;
     }
 
-    /* ── IMAGE AREA ── */
-    .image-area {
+    /* ── SPLIT VIEW ── */
+    .split-view {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* Left panel — image */
+    .panel-image {
       flex: 1;
       overflow: auto;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 2rem;
+      background: #2a2a2a;
+      border-right: 1px solid rgba(255,255,255,.1);
     }
 
     #page-image {
-      max-width: calc(100vw - 4rem);
-      max-height: calc(100vh - 200px);
+      max-width: 100%;
+      max-height: calc(100vh - 172px);
       object-fit: contain;
       display: block;
       box-shadow: 0 8px 40px rgba(0,0,0,.6);
       transition: transform .25s ease;
       background: #fff;
+    }
+
+    /* Right panel — extracted text */
+    .panel-text {
+      width: 38%;
+      flex-shrink: 0;
+      overflow-y: auto;
+      background: var(--paper);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-text-header {
+      padding: .85rem 1.5rem .6rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--parchment);
+      flex-shrink: 0;
+    }
+
+    .panel-text-label {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .panel-text-body {
+      flex: 1;
+      padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+    }
+
+    .text-line {
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: .78rem;
+      line-height: 1.65;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .text-empty {
+      font-size: .82rem;
+      color: var(--muted);
+      font-style: italic;
     }
 
     /* ── CONTROLS BAR ── */
@@ -240,11 +297,29 @@
        th:text="'Page ' + ${pageNum} + ' of ' + ${totalPages}"></div>
 </div>
 
-<!-- ── IMAGE ── -->
-<div class="image-area">
-  <img id="page-image"
-       th:src="@{/api/easement/attachment(docId=${docId},name=${name})}"
-       th:alt="'Page ' + ${pageNum}">
+<!-- ── SPLIT VIEW ── -->
+<div class="split-view">
+
+  <!-- Left: page image -->
+  <div class="panel-image">
+    <img id="page-image"
+         th:src="@{/api/easement/attachment(docId=${docId},name=${name})}"
+         th:alt="'Page ' + ${pageNum}">
+  </div>
+
+  <!-- Right: extracted text -->
+  <div class="panel-text">
+    <div class="panel-text-header">
+      <div class="panel-text-label">Extracted Text — Page <span th:text="${pageNum}"></span></div>
+    </div>
+    <div class="panel-text-body">
+      <div th:if="${#lists.isEmpty(lines)}" class="text-empty">
+        No text available for this page.
+      </div>
+      <div th:each="line : ${lines}" class="text-line" th:text="${line}"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ── CONTROLS ── -->
@@ -301,8 +376,8 @@
 
     // Swap max-width / max-height constraints when image is sideways.
     if (rotation === 90 || rotation === 270) {
-      img.style.maxWidth  = 'calc(100vh - 200px)';
-      img.style.maxHeight = 'calc(100vw - 4rem)';
+      img.style.maxWidth  = 'calc(100vh - 172px)';
+      img.style.maxHeight = '100%';
     } else {
       img.style.maxWidth  = '';
       img.style.maxHeight = '';

@@ -182,6 +182,20 @@ public class SearchController {
     int totalPages = (doc.getPages() != null && !doc.getPages().isEmpty())
       ? doc.getPages().size() : doc.getPageCount();
 
+    // pageNum is reassigned above so it is not effectively final; capture it.
+    final int finalPageNum = pageNum;
+
+    // Collect text lines for the current page so the template can render them.
+    List<String> lines = new LinkedList<>();
+    if (doc.getPages() != null) {
+      doc.getPages().stream().filter(p -> p.getPageNumber() == finalPageNum)
+        .findFirst().ifPresent(ep -> {
+          if (ep.getLines() != null) {
+            lines.addAll(ep.getLines());
+          }
+        });
+    }
+
     model.addAttribute("docId", docId);
     model.addAttribute("name", name);
     model.addAttribute("filename", doc.getFilename());
@@ -192,6 +206,7 @@ public class SearchController {
     model.addAttribute("nextName",
       pageNum < totalPages ? "page-" + (pageNum + 1) + ".png" : null);
     model.addAttribute("query", q != null ? q : "");
+    model.addAttribute("lines", lines);
 
     return "attachment";
   }
