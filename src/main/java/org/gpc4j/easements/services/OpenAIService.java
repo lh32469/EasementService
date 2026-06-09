@@ -61,6 +61,14 @@ public class OpenAIService implements AIService {
   }
 
 
+  /** {@inheritDoc} */
+  @Override
+  public String getModel() {
+
+    return MODEL;
+  }
+
+
   /**
    * {@inheritDoc}
    *

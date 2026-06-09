@@ -50,10 +50,9 @@ public class EasementController {
 
   private static final float RENDER_DPI = 150f;
 
-  private static final String OCR_PROMPT =
-    "Read all text from this easement document page image. "
-      + "Return only the text content, one line per line, exactly as it appears. "
-      + "Do not add any commentary or formatting.";
+  private static final String OCR_PROMPT = "Read all text from this easement document page image. "
+    + "Return only the text content, one line per line, exactly as it appears. "
+    + "Do not add any commentary or formatting.";
 
   private final AIService aiService;
   private final IDocumentSession session;
@@ -82,7 +81,7 @@ public class EasementController {
    *
    * @param file the uploaded PDF
    * @return {@code 202 Accepted} with the document ID, or {@code 400} if the
-   *         filename is absent
+   * filename is absent
    * @throws IOException if reading, rendering, or AI text extraction fails
    */
   @PostMapping("/easement")
@@ -123,18 +122,14 @@ public class EasementController {
       int pageNumber = i + 1;
       log.info("Extracting text from page {}/{}", pageNumber, pageImages.size());
 
-      AIPrompt prompt = AIPrompt.builder()
-        .text(OCR_PROMPT)
-        .image(pageImages.get(i))
+      AIPrompt prompt = AIPrompt.builder().text(OCR_PROMPT).image(pageImages.get(i))
         .build();
 
       String aiText = aiService.query(prompt);
       log.debug("Page {}: AI returned {} chars", pageNumber, aiText.length());
 
-      List<String> lines = Arrays.stream(aiText.split("\n"))
-        .map(String::trim)
-        .filter(l -> !l.isBlank())
-        .collect(Collectors.toCollection(LinkedList::new));
+      List<String> lines = Arrays.stream(aiText.split("\n")).map(String::trim)
+        .filter(l -> !l.isBlank()).collect(Collectors.toCollection(LinkedList::new));
 
       pages.add(new EasementPage(pageNumber, lines, 0f));
     }
@@ -145,6 +140,8 @@ public class EasementController {
     doc.setPages(pages);
     doc.setPageCount(pages.size());
     doc.setCreatedAt(Instant.now());
+    doc.setAiServiceName(aiService.getClass().getSimpleName());
+    doc.setAiModel(aiService.getModel());
 
     session.store(doc, filename);
 
@@ -156,8 +153,8 @@ public class EasementController {
     }
 
     session.saveChanges();
-    log.info("Stored '{}' with {} page(s) and {} attachment(s)",
-      filename, pages.size(), pageImages.size());
+    log.info("Stored '{}' with {} page(s) and {} attachment(s)", filename,
+      pages.size(), pageImages.size());
 
     return ResponseEntity.accepted().body(filename + "\n");
   }

@@ -28,4 +28,14 @@ public interface AIService {
    */
   String query(AIPrompt prompt) throws IOException;
 
+
+  /**
+   * Returns the model identifier used by this implementation when calling the
+   * AI provider (e.g. {@code "gemini-1.5-flash"}, {@code "gpt-4o"},
+   * {@code "claude-haiku-4-5-20251001"}).
+   *
+   * @return the model ID string; never null
+   */
+  String getModel();
+
 }

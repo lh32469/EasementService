@@ -38,8 +38,10 @@ public class GeminiService implements AIService {
 
   private static final Logger log = LoggerFactory.getLogger(GeminiService.class);
 
+  private static final String MODEL = "gemini-1.5-flash";
+
   private static final String GEMINI_URL = "https://generativelanguage.googleapis.com"
-    + "/v1beta/models/gemini-1.5-flash:generateContent";
+    + "/v1beta/models/" + MODEL + ":generateContent";
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -57,6 +59,14 @@ public class GeminiService implements AIService {
     this.apiKey = apiKey;
     // HTTP/1.1 avoids 503s the Gemini API returns for large payloads over HTTP/2
     this.http = HttpClient.newBuilder().version(Version.HTTP_1_1).build();
+  }
+
+
+  /** {@inheritDoc} */
+  @Override
+  public String getModel() {
+
+    return MODEL;
   }
 
 

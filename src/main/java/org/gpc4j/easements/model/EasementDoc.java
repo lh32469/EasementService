@@ -42,4 +42,17 @@ public class EasementDoc {
   /** UTC timestamp recorded when the document was first ingested. */
   private Instant createdAt;
 
+  /**
+   * Simple class name of the {@link org.gpc4j.easements.services.AIService}
+   * implementation that produced this document (e.g. {@code "AnthropicService"}).
+   */
+  private String aiServiceName;
+
+  /**
+   * Model identifier used by the AI provider when extracting text from page
+   * images (e.g. {@code "claude-haiku-4-5-20251001"}, {@code "gpt-4o"},
+   * {@code "gemini-1.5-flash"}).
+   */
+  private String aiModel;
+
 }
