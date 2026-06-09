@@ -39,8 +39,7 @@ public class OpenAIService implements AIService {
 
   private static final Logger log = LoggerFactory.getLogger(OpenAIService.class);
 
-  private static final String OPENAI_URL =
-    "https://api.openai.com/v1/chat/completions";
+  private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
   private static final String MODEL = "gpt-4o";
 
@@ -48,7 +47,6 @@ public class OpenAIService implements AIService {
 
   private final HttpClient http;
   private final String apiKey;
-
 
   /**
    * Creates the service with the given OpenAI API key.
