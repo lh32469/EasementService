@@ -133,14 +133,15 @@ public class SearchController {
         pages
           .add(new PageCard(doc.getId(), doc.getFilename(),
             "page-" + p.getPageNumber() + ".png", p.getPageNumber(), docPages.size(),
-            p.getConfidence(), matched));
+            p.getConfidence(), matched,
+            doc.getAiServiceName(), doc.getAiModel()));
       }
     } else {
       // Legacy document without per-page data: fall back to pageCount.
       for (int i = 1; i <= doc.getPageCount(); i++) {
         pages
           .add(new PageCard(doc.getId(), doc.getFilename(), "page-" + i + ".png", i,
-            doc.getPageCount(), 0f, false));
+            doc.getPageCount(), 0f, false, null, null));
       }
     }
 

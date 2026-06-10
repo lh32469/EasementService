@@ -93,7 +93,8 @@ public class SearchService {
       for (EasementDoc doc : docs) {
         cards
           .add(new PageCard(doc.getId(), doc.getFilename(), "page-1.png", 1,
-            doc.getPageCount(), avgConfidence(doc), false));
+            doc.getPageCount(), avgConfidence(doc), false,
+            doc.getAiServiceName(), doc.getAiModel()));
       }
     }
 

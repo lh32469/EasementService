@@ -37,4 +37,17 @@ public class PageCard {
    */
   private boolean matched;
 
+  /**
+   * Simple class name of the {@link org.gpc4j.easements.services.AIService}
+   * implementation that extracted this page's text, or {@code null} for legacy
+   * documents processed before AI extraction was introduced.
+   */
+  private String aiServiceName;
+
+  /**
+   * Model identifier reported by the AI service, e.g.
+   * {@code gemini-3.1-flash-lite}, or {@code null} for legacy documents.
+   */
+  private String aiModel;
+
 }
