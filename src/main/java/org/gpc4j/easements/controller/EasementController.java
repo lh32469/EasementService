@@ -17,6 +17,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.gpc4j.easements.model.AIPrompt;
+import org.gpc4j.easements.model.AIResponse;
 import org.gpc4j.easements.model.EasementDoc;
 import org.gpc4j.easements.model.EasementPage;
 import org.gpc4j.easements.services.AIService;
@@ -136,13 +137,15 @@ public class EasementController {
         .image(pageImages.get(i))
         .build();
 
-      String aiText = aiService.query(prompt);
-      log.debug("Page {}: AI returned {} chars", pageNumber, aiText.length());
+      AIResponse aiResponse = aiService.queryResponse(prompt);
+      log
+        .debug("Page {}: AI returned {} chars via {}", pageNumber,
+          aiResponse.text().length(), aiResponse.aiServiceName());
 
       // Split response into lines; detect and strip the CONFIDENCE trailer.
       float confidence = 0f;
       List<String> lines = new LinkedList<>();
-      for (String raw : aiText.split("\n")) {
+      for (String raw : aiResponse.text().split("\n")) {
         String trimmed = raw.trim();
         if (trimmed.isBlank()) {
           continue;
@@ -161,7 +164,7 @@ public class EasementController {
 
       pages
         .add(new EasementPage(pageNumber, lines, confidence,
-          aiService.getClass().getSimpleName(), aiService.getModel()));
+          aiResponse.aiServiceName(), aiResponse.aiModel()));
     }
 
     EasementDoc doc = new EasementDoc();
