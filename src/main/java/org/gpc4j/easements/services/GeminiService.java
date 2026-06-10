@@ -126,7 +126,7 @@ public class GeminiService implements AIService {
     String finishReason = root.at("/candidates/0/finishReason").asText();
 
     if ("RECITATION".equals(finishReason)) {
-      log.warn("Gemini RECITATION; falling back to AnthropicService");
+      log.warn("Gemini RECITATION; response: {}", response.body());
       return anthropicService.query(prompt);
     }
 
