@@ -15,6 +15,7 @@ import org.gpc4j.easements.model.EasementDoc;
 import org.gpc4j.easements.model.EasementPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -37,11 +38,14 @@ import net.ravendb.client.documents.session.IDocumentSession;
  * have been processed, so a document is not marked as done unless the full
  * reprocessing succeeds.
  *
- * <p>Runs once per day at 02:00 server time. Only one document is processed per
- * run to avoid long-running requests or rate-limit pressure against the AI API.
- * Re-enable {@link EnableScheduling} on
+ * <p>Runs 100 times per day (every 864 seconds). Only one document is processed
+ * per run to avoid long-running requests or rate-limit pressure against the AI
+ * API.
+ * Active only under the {@code k8s} Spring profile; the bean is not registered
+ * in local or test environments. Re-enable {@link EnableScheduling} on
  * {@link org.gpc4j.easements.EasementsApplication} to activate this task.
  */
+@Profile("k8s")
 @Component
 public class EasementReprocessingTask {
 
@@ -70,10 +74,11 @@ public class EasementReprocessingTask {
    * Selects one {@link EasementDoc} whose {@code aiServiceName} is unset,
    * delegates processing to {@link #processDoc}, and persists the result.
    *
-   * <p>Runs daily at 02:00. Only one document is processed per invocation so
-   * that long multi-page jobs do not accumulate across runs.
+   * <p>Runs 100 times per day (every 864 seconds). Only one document is
+   * processed per invocation so that long multi-page jobs do not accumulate
+   * across runs.
    */
-  @Scheduled(cron = "0 0 2 * * *")
+  @Scheduled(fixedRate = 864_000)
   public void reprocessOne() {
 
     log.info("Reprocessing task: searching for EasementDoc with no aiServiceName");
@@ -180,8 +185,8 @@ public class EasementReprocessingTask {
 
         log.debug("Page {}: {} lines, confidence {}%", i, lines.size(), confidence);
         pages
-          .add(new EasementPage(i, lines, confidence,
-            aiResponse.aiServiceName(), aiResponse.aiModel()));
+          .add(new EasementPage(i, lines, confidence, aiResponse.aiServiceName(),
+            aiResponse.aiModel()));
 
       } catch (IOException e) {
         log
