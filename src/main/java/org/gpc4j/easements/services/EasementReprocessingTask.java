@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 
 import org.gpc4j.easements.model.AIPrompt;
+import org.gpc4j.easements.model.AIResponse;
 import org.gpc4j.easements.model.EasementDoc;
 import org.gpc4j.easements.model.EasementPage;
 import org.slf4j.Logger;
@@ -157,12 +158,14 @@ public class EasementReprocessingTask {
           .image(imageBytes)
           .build();
 
-        String aiText = aiService.query(prompt);
-        log.debug("Page {}: AI returned {} chars", i, aiText.length());
+        AIResponse aiResponse = aiService.queryResponse(prompt);
+        log
+          .debug("Page {}: AI returned {} chars via {}", i,
+            aiResponse.text().length(), aiResponse.aiServiceName());
 
         float confidence = 0f;
         List<String> lines = new LinkedList<>();
-        for (String raw : aiText.split("\n")) {
+        for (String raw : aiResponse.text().split("\n")) {
           String trimmed = raw.trim();
           if (trimmed.isBlank()) {
             continue;
@@ -178,7 +181,7 @@ public class EasementReprocessingTask {
         log.debug("Page {}: {} lines, confidence {}%", i, lines.size(), confidence);
         pages
           .add(new EasementPage(i, lines, confidence,
-            aiService.getClass().getSimpleName(), aiService.getModel()));
+            aiResponse.aiServiceName(), aiResponse.aiModel()));
 
       } catch (IOException e) {
         log
