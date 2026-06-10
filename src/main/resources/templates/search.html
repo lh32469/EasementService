@@ -444,16 +444,6 @@
     .conf-mid  { color: #8b6914; background: rgba(139,105,20,.1); }
     .conf-low  { color: #963030; background: rgba(150,48,48,.1);  }
 
-    .ai-info {
-      margin-top: .22rem;
-      font-size: .65rem;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      letter-spacing: .03em;
-    }
-
     /* ── PAGINATION ──────────────────────────────── */
     .pagination {
       display: flex;
@@ -614,8 +604,6 @@
                 th:classappend="${card.confidence >= 80} ? ' conf-high' : (${card.confidence >= 60} ? ' conf-mid' : ' conf-low')"
                 th:text="${#numbers.formatDecimal(card.confidence, 1, 1)} + '%'"></span>
         </div>
-        <div th:if="${card.aiServiceName != null}" class="ai-info"
-             th:text="${card.aiServiceName} + ' · ' + ${card.aiModel}"></div>
       </div>
     </div>
   </div>
