@@ -78,8 +78,11 @@ class AIServiceIT {
       image = in.readAllBytes();
     }
 
-    AIPrompt prompt = AIPrompt.builder().text("read the text from this image")
-      .image(image).build();
+    AIPrompt prompt = AIPrompt
+      .builder()
+      .text("read the text from this image")
+      .image(image)
+      .build();
 
     String response = aiService.query(prompt);
 

@@ -150,6 +150,14 @@
     <setting
       id="org.eclipse.jdt.core.formatter.alignment_for_arguments_in_method_invocation"
       value="16"/>
+    <!--
+      Method chaining: each subsequent chained call (.foo().bar()) goes on its
+      own line with one continuation indent.
+      48 = WRAP_ONE_PER_LINE (3×16) + INDENT_DEFAULT
+    -->
+    <setting
+      id="org.eclipse.jdt.core.formatter.alignment_for_selector_in_method_invocation"
+      value="48"/>
     <setting
       id="org.eclipse.jdt.core.formatter.alignment_for_arguments_in_allocation_expression"
       value="16"/>

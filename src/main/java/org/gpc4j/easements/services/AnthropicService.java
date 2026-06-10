@@ -90,24 +90,32 @@ public class AnthropicService implements AIService {
     if (prompt.getImage() != null && prompt.getImage().length > 0) {
       String mimeType = detectMimeType(prompt.getImage());
       String b64 = Base64.getEncoder().encodeToString(prompt.getImage());
-      content.add(Map.of("type", "image", "source",
-        Map.of("type", "base64", "media_type", mimeType, "data", b64)));
-      log.debug("Attaching {} image ({} bytes) to Anthropic request", mimeType,
-        prompt.getImage().length);
+      content
+        .add(Map
+          .of("type", "image", "source",
+            Map.of("type", "base64", "media_type", mimeType, "data", b64)));
+      log
+        .debug("Attaching {} image ({} bytes) to Anthropic request", mimeType,
+          prompt.getImage().length);
     }
 
     content.add(Map.of("type", "text", "text", prompt.getText()));
 
-    Map<String, Object> body = Map.of("model", MODEL, "max_tokens", MAX_TOKENS,
-      "messages", List.of(Map.of("role", "user", "content", content)));
+    Map<String, Object> body = Map
+      .of("model", MODEL, "max_tokens", MAX_TOKENS, "messages",
+        List.of(Map.of("role", "user", "content", content)));
 
     String requestJson = MAPPER.writeValueAsString(body);
     log.debug("Sending Anthropic request ({} chars)", requestJson.length());
 
-    HttpRequest request = HttpRequest.newBuilder().uri(URI.create(ANTHROPIC_URL))
-      .header("Content-Type", "application/json").header("x-api-key", apiKey)
+    HttpRequest request = HttpRequest
+      .newBuilder()
+      .uri(URI.create(ANTHROPIC_URL))
+      .header("Content-Type", "application/json")
+      .header("x-api-key", apiKey)
       .header("anthropic-version", ANTHROPIC_VERSION)
-      .POST(HttpRequest.BodyPublishers.ofString(requestJson)).build();
+      .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+      .build();
 
     HttpResponse<String> response;
     try {

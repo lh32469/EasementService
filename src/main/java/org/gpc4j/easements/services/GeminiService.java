@@ -33,6 +33,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <p>The API key is read from the {@code gemini.api.key} application property.
  * The HTTP client is forced to HTTP/1.1 to avoid 503 responses the Gemini API
  * returns for large multimodal payloads over HTTP/2.
+ *
+ * <p>When Gemini returns a {@code RECITATION} finish reason (indicating the
+ * response may recite copyrighted material) the same prompt is forwarded to
+ * {@link AnthropicService} as a fallback so the page is not silently skipped.
  */
 @Primary
 @Service
@@ -49,22 +53,30 @@ public class GeminiService implements AIService {
 
   private final HttpClient http;
   private final String apiKey;
+  private final AnthropicService anthropicService;
 
   /**
-   * Creates the service with the given Gemini API key.
+   * Creates the service with the given Gemini API key and Anthropic fallback.
    *
-   * @param apiKey the {@code X-goog-api-key} header value sent with every
-   *               request to the Gemini API
+   * @param apiKey           the {@code X-goog-api-key} header value sent with
+   *                         every request to the Gemini API
+   * @param anthropicService fallback service used when Gemini returns a
+   *                         {@code RECITATION} finish reason with no partial
+   *                         text
    */
-  public GeminiService(@Value("${gemini.api.key}") String apiKey) {
+  public GeminiService(@Value("${gemini.api.key}") String apiKey,
+    AnthropicService anthropicService) {
 
     this.apiKey = apiKey;
+    this.anthropicService = anthropicService;
     // HTTP/1.1 avoids 503s the Gemini API returns for large payloads over HTTP/2
     this.http = HttpClient.newBuilder().version(Version.HTTP_1_1).build();
   }
 
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public String getModel() {
 
@@ -88,8 +100,9 @@ public class GeminiService implements AIService {
       String mimeType = detectMimeType(prompt.getImage());
       String b64 = Base64.getEncoder().encodeToString(prompt.getImage());
       parts.add(Map.of("inlineData", Map.of("mimeType", mimeType, "data", b64)));
-      log.debug("Attaching {} image ({} bytes) to Gemini request", mimeType,
-        prompt.getImage().length);
+      log
+        .debug("Attaching {} image ({} bytes) to Gemini request", mimeType,
+          prompt.getImage().length);
     }
 
     parts.add(Map.of("text", prompt.getText()));
@@ -99,13 +112,24 @@ public class GeminiService implements AIService {
     String requestJson = MAPPER.writeValueAsString(body);
     log.debug("Sending Gemini request ({} chars)", requestJson.length());
 
-    HttpRequest request = HttpRequest.newBuilder().uri(URI.create(GEMINI_URL))
-      .header("Content-Type", "application/json").header("X-goog-api-key", apiKey)
-      .POST(HttpRequest.BodyPublishers.ofString(requestJson)).build();
+    HttpRequest request = HttpRequest
+      .newBuilder()
+      .uri(URI.create(GEMINI_URL))
+      .header("Content-Type", "application/json")
+      .header("X-goog-api-key", apiKey)
+      .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+      .build();
 
     HttpResponse<String> response = send(request);
 
     JsonNode root = MAPPER.readTree(response.body());
+    String finishReason = root.at("/candidates/0/finishReason").asText();
+
+    if ("RECITATION".equals(finishReason)) {
+      log.warn("Gemini RECITATION; falling back to AnthropicService");
+      return anthropicService.query(prompt);
+    }
+
     JsonNode text = root.at("/candidates/0/content/parts/0/text");
     if (text.isMissingNode()) {
       throw new IOException(

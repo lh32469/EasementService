@@ -50,14 +50,16 @@ public class EasementController {
 
   private static final float RENDER_DPI = 150f;
 
-  public static final String OCR_PROMPT = "Read all text from this easement "
+  public static final String OCR_PROMPT = "Read all text from this public "
     + "document page image. "
     + "Return the text content, one line per line, exactly as it appears. "
     + "After the extracted text, add a line: CONFIDENCE: NN% where NN reflects "
     + "how clearly the text was readable in percentage.";
 
-  /** Matches the AI-appended confidence line, e.g. {@code CONFIDENCE: 87%}. */
-  private static final Pattern CONFIDENCE_PATTERN = Pattern
+  /**
+   * Matches the AI-appended confidence line, e.g. {@code CONFIDENCE: 87%}.
+   */
+  public static final Pattern CONFIDENCE_PATTERN = Pattern
     .compile("CONFIDENCE:\\s*(\\d+(?:\\.\\d+)?)%", Pattern.CASE_INSENSITIVE);
 
   private final AIService aiService;
@@ -87,7 +89,7 @@ public class EasementController {
    *
    * @param file the uploaded PDF
    * @return {@code 202 Accepted} with the document ID, or {@code 400} if the
-   *         filename is absent
+   * filename is absent
    * @throws IOException if reading, rendering, or AI text extraction fails
    */
   @PostMapping("/easement")
@@ -113,8 +115,8 @@ public class EasementController {
       log.info("PDF has {} page(s)", pageCount);
 
       for (int i = 0; i < pageCount; i++) {
-        BufferedImage image = renderer.renderImageWithDPI(i, RENDER_DPI,
-          ImageType.RGB);
+        BufferedImage image = renderer
+          .renderImageWithDPI(i, RENDER_DPI, ImageType.RGB);
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ImageIO.write(image, "PNG", bos);
@@ -128,7 +130,10 @@ public class EasementController {
       int pageNumber = i + 1;
       log.info("Extracting text from page {}/{}", pageNumber, pageImages.size());
 
-      AIPrompt prompt = AIPrompt.builder().text(OCR_PROMPT).image(pageImages.get(i))
+      AIPrompt prompt = AIPrompt
+        .builder()
+        .text(OCR_PROMPT)
+        .image(pageImages.get(i))
         .build();
 
       String aiText = aiService.query(prompt);
@@ -150,8 +155,9 @@ public class EasementController {
         }
       }
 
-      log.debug("Page {}: {} lines, confidence {}%", pageNumber, lines.size(),
-        confidence);
+      log
+        .debug("Page {}: {} lines, confidence {}%", pageNumber, lines.size(),
+          confidence);
       pages.add(new EasementPage(pageNumber, lines, confidence));
     }
 
@@ -168,14 +174,18 @@ public class EasementController {
 
     for (int i = 0; i < pageImages.size(); i++) {
       String attachmentName = "page-" + (i + 1) + ".png";
-      session.advanced().attachments().store(doc, attachmentName,
-        new ByteArrayInputStream(pageImages.get(i)), "image/png");
+      session
+        .advanced()
+        .attachments()
+        .store(doc, attachmentName, new ByteArrayInputStream(pageImages.get(i)),
+          "image/png");
       log.debug("Queued attachment: {}", attachmentName);
     }
 
     session.saveChanges();
-    log.info("Stored '{}' with {} page(s) and {} attachment(s)", filename,
-      pages.size(), pageImages.size());
+    log
+      .info("Stored '{}' with {} page(s) and {} attachment(s)", filename,
+        pages.size(), pageImages.size());
 
     return ResponseEntity.accepted().body(filename + "\n");
   }

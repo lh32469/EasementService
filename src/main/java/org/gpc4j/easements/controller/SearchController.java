@@ -130,15 +130,17 @@ public class SearchController {
       for (EasementPage p : docPages) {
         boolean matched = q != null && !q.isBlank()
           && searchService.queryMatchesPage(p, q);
-        pages.add(new PageCard(doc.getId(), doc.getFilename(),
-          "page-" + p.getPageNumber() + ".png", p.getPageNumber(), docPages.size(),
-          p.getConfidence(), matched));
+        pages
+          .add(new PageCard(doc.getId(), doc.getFilename(),
+            "page-" + p.getPageNumber() + ".png", p.getPageNumber(), docPages.size(),
+            p.getConfidence(), matched));
       }
     } else {
       // Legacy document without per-page data: fall back to pageCount.
       for (int i = 1; i <= doc.getPageCount(); i++) {
-        pages.add(new PageCard(doc.getId(), doc.getFilename(), "page-" + i + ".png",
-          i, doc.getPageCount(), 0f, false));
+        pages
+          .add(new PageCard(doc.getId(), doc.getFilename(), "page-" + i + ".png", i,
+            doc.getPageCount(), 0f, false));
       }
     }
 
@@ -188,8 +190,12 @@ public class SearchController {
     // Collect text lines for the current page so the template can render them.
     List<String> lines = new LinkedList<>();
     if (doc.getPages() != null) {
-      doc.getPages().stream().filter(p -> p.getPageNumber() == finalPageNum)
-        .findFirst().ifPresent(ep -> {
+      doc
+        .getPages()
+        .stream()
+        .filter(p -> p.getPageNumber() == finalPageNum)
+        .findFirst()
+        .ifPresent(ep -> {
           if (ep.getLines() != null) {
             lines.addAll(ep.getLines());
           }
@@ -201,10 +207,12 @@ public class SearchController {
     model.addAttribute("filename", doc.getFilename());
     model.addAttribute("pageNum", pageNum);
     model.addAttribute("totalPages", totalPages);
-    model.addAttribute("prevName",
-      pageNum > 1 ? "page-" + (pageNum - 1) + ".png" : null);
-    model.addAttribute("nextName",
-      pageNum < totalPages ? "page-" + (pageNum + 1) + ".png" : null);
+    model
+      .addAttribute("prevName",
+        pageNum > 1 ? "page-" + (pageNum - 1) + ".png" : null);
+    model
+      .addAttribute("nextName",
+        pageNum < totalPages ? "page-" + (pageNum + 1) + ".png" : null);
     model.addAttribute("query", q != null ? q : "");
     model.addAttribute("lines", lines);
 
@@ -250,8 +258,9 @@ public class SearchController {
       // @formatter:on
 
     } catch (Exception e) {
-      log.warn("Attachment not found: docId='{}' name='{}': {}", docId, name,
-        e.getMessage());
+      log
+        .warn("Attachment not found: docId='{}' name='{}': {}", docId, name,
+          e.getMessage());
       return ResponseEntity.notFound().build();
     }
   }

@@ -73,8 +73,13 @@ public class SearchService {
       log.info("RQL: {} (page {})", rql, page);
 
       Reference<QueryStatistics> statsRef = new Reference<>();
-      List<EasementDoc> docs = session.advanced().rawQuery(EasementDoc.class, rql)
-        .statistics(statsRef).skip((page - 1) * PAGE_SIZE).take(PAGE_SIZE).toList();
+      List<EasementDoc> docs = session
+        .advanced()
+        .rawQuery(EasementDoc.class, rql)
+        .statistics(statsRef)
+        .skip((page - 1) * PAGE_SIZE)
+        .take(PAGE_SIZE)
+        .toList();
 
       totalCount = statsRef.value.getTotalResults();
       totalPages = (int) Math.ceil((double) totalCount / PAGE_SIZE);
@@ -86,8 +91,9 @@ public class SearchService {
       log.info("Query '{}' — {} total, page {}/{}", q, totalCount, page, totalPages);
 
       for (EasementDoc doc : docs) {
-        cards.add(new PageCard(doc.getId(), doc.getFilename(), "page-1.png", 1,
-          doc.getPageCount(), avgConfidence(doc), false));
+        cards
+          .add(new PageCard(doc.getId(), doc.getFilename(), "page-1.png", 1,
+            doc.getPageCount(), avgConfidence(doc), false));
       }
     }
 
@@ -167,7 +173,9 @@ public class SearchService {
       if (i > 0) {
         rql.append(' ').append(ops.get(i - 1)).append(' ');
       }
-      rql.append("search(pages[].lines, '").append(terms.get(i).replace("'", "''"))
+      rql
+        .append("search(pages[].lines, '")
+        .append(terms.get(i).replace("'", "''"))
         .append("')");
     }
     return rql.toString();

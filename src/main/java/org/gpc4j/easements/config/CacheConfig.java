@@ -33,8 +33,11 @@ public class CacheConfig {
   @Bean
   public CacheManager cacheManager() {
 
-    var searchCache = Caffeine.newBuilder().maximumSize(SEARCH_MAX_ENTRIES)
-      .expireAfterWrite(5, TimeUnit.MINUTES).<Object, Object>build();
+    var searchCache = Caffeine
+      .newBuilder()
+      .maximumSize(SEARCH_MAX_ENTRIES)
+      .expireAfterWrite(5, TimeUnit.MINUTES)
+      .<Object, Object>build();
     var searchResults = new CaffeineCache("searchResults", searchCache);
 
     SimpleCacheManager manager = new SimpleCacheManager();

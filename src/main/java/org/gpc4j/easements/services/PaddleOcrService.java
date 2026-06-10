@@ -79,8 +79,9 @@ public class PaddleOcrService {
 
     this.restClient = RestClient.builder().requestFactory(factory).build();
 
-    log.info("PaddleOcrService initialised — url={}, callbackUrl={}, timeout={}s",
-      url, callbackUrl, timeoutSeconds);
+    log
+      .info("PaddleOcrService initialised — url={}, callbackUrl={}, timeout={}s",
+        url, callbackUrl, timeoutSeconds);
   }
 
 
@@ -100,8 +101,9 @@ public class PaddleOcrService {
    */
   public void process(String filename, byte[] pdfBytes) {
 
-    log.info("Posting {} ({} bytes) to PaddleOCR service, callbackUrl={}", filename,
-      pdfBytes.length, callbackUrl);
+    log
+      .info("Posting {} ({} bytes) to PaddleOCR service, callbackUrl={}", filename,
+        pdfBytes.length, callbackUrl);
 
     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
     body.add("file", new ByteArrayResource(pdfBytes) {
@@ -114,8 +116,13 @@ public class PaddleOcrService {
     });
     body.add("callbackUrl", callbackUrl);
 
-    restClient.post().uri(url).contentType(MediaType.MULTIPART_FORM_DATA).body(body)
-      .retrieve().toBodilessEntity();
+    restClient
+      .post()
+      .uri(url)
+      .contentType(MediaType.MULTIPART_FORM_DATA)
+      .body(body)
+      .retrieve()
+      .toBodilessEntity();
 
     log.info("PaddleOCR accepted '{}' (201)", filename);
   }
