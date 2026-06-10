@@ -50,7 +50,8 @@ public class EasementController {
 
   private static final float RENDER_DPI = 150f;
 
-  private static final String OCR_PROMPT = "Read all text from this easement document page image. "
+  public static final String OCR_PROMPT = "Read all text from this easement "
+    + "document page image. "
     + "Return the text content, one line per line, exactly as it appears. "
     + "After the extracted text, add a line: CONFIDENCE: NN% where NN reflects "
     + "how clearly the text was readable in percentage.";

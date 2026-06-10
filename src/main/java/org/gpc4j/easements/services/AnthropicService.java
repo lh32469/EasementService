@@ -15,7 +15,6 @@ import org.gpc4j.easements.model.AIPrompt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,7 +33,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * property. Inject {@code @Qualifier("anthropicService")} to select this
  * provider when multiple implementations are on the classpath.
  */
-@Primary
 @Service
 public class AnthropicService implements AIService {
 
@@ -67,7 +65,9 @@ public class AnthropicService implements AIService {
   }
 
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public String getModel() {
 

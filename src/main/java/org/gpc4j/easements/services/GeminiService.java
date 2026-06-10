@@ -15,6 +15,7 @@ import org.gpc4j.easements.model.AIPrompt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,12 +34,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * The HTTP client is forced to HTTP/1.1 to avoid 503 responses the Gemini API
  * returns for large multimodal payloads over HTTP/2.
  */
+@Primary
 @Service
 public class GeminiService implements AIService {
 
   private static final Logger log = LoggerFactory.getLogger(GeminiService.class);
 
-  private static final String MODEL = "gemini-1.5-flash";
+  private static final String MODEL = "gemini-3.1-flash-lite";
 
   private static final String GEMINI_URL = "https://generativelanguage.googleapis.com"
     + "/v1beta/models/" + MODEL + ":generateContent";

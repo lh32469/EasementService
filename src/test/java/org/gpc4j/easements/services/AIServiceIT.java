@@ -1,5 +1,6 @@
 package org.gpc4j.easements.services;
 
+import static org.gpc4j.easements.controller.EasementController.OCR_PROMPT;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -30,7 +31,7 @@ import net.ravendb.client.documents.IDocumentStore;
 class AIServiceIT {
 
   @Autowired
-  @Qualifier("anthropicService")
+  @Qualifier("geminiService")
   private AIService aiService;
 
   /**
@@ -50,8 +51,7 @@ class AIServiceIT {
       image = in.readAllBytes();
     }
 
-    AIPrompt prompt = AIPrompt.builder().text("read the text from this image")
-      .image(image).build();
+    AIPrompt prompt = AIPrompt.builder().text(OCR_PROMPT).image(image).build();
 
     String response = aiService.query(prompt);
 
