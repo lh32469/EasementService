@@ -291,6 +291,17 @@
     .conf-mid  { color: #8b6914; background: rgba(139,105,20,.1); }
     .conf-low  { color: #963030; background: rgba(150,48,48,.1);  }
 
+    .ai-provenance {
+      margin-top: .22rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .62rem;
+      color: var(--muted);
+      letter-spacing: .02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* ── MATCHED PAGE HIGHLIGHT ── */
     .doc-card.matched {
       border-color: #2a6e35;
@@ -351,6 +362,9 @@
                 th:classappend="${page.confidence >= 80} ? ' conf-high' : (${page.confidence >= 60} ? ' conf-mid' : ' conf-low')"
                 th:text="${#numbers.formatDecimal(page.confidence, 1, 1)} + '%'"></span>
         </div>
+        <div class="ai-provenance"
+             th:if="${page.aiServiceName != null}"
+             th:text="${page.aiServiceName} + ' / ' + ${page.aiModel}"></div>
       </div>
     </div>
   </div>
