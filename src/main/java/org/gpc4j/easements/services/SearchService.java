@@ -91,10 +91,16 @@ public class SearchService {
       log.info("Query '{}' — {} total, page {}/{}", q, totalCount, page, totalPages);
 
       for (EasementDoc doc : docs) {
+        String aiServiceName = null;
+        String aiModel = null;
+        if (doc.getPages() != null && !doc.getPages().isEmpty()) {
+          EasementPage firstPage = doc.getPages().get(0);
+          aiServiceName = firstPage.getAiServiceName();
+          aiModel = firstPage.getAiModel();
+        }
         cards
           .add(new PageCard(doc.getId(), doc.getFilename(), "page-1.png", 1,
-            doc.getPageCount(), avgConfidence(doc), false,
-            doc.getAiServiceName(), doc.getAiModel()));
+            doc.getPageCount(), avgConfidence(doc), false, aiServiceName, aiModel));
       }
     }
 

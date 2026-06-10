@@ -28,6 +28,8 @@ public interface AIService {
    */
   String query(AIPrompt prompt) throws IOException;
 
+  //  AIResponse queryResponse(AIPrompt prompt) throws IOException;
+
 
   /**
    * Returns the model identifier used by this implementation when calling the

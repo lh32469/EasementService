@@ -133,8 +133,7 @@ public class SearchController {
         pages
           .add(new PageCard(doc.getId(), doc.getFilename(),
             "page-" + p.getPageNumber() + ".png", p.getPageNumber(), docPages.size(),
-            p.getConfidence(), matched,
-            doc.getAiServiceName(), doc.getAiModel()));
+            p.getConfidence(), matched, p.getAiServiceName(), p.getAiModel()));
       }
     } else {
       // Legacy document without per-page data: fall back to pageCount.

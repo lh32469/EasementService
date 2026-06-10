@@ -158,7 +158,10 @@ public class EasementController {
       log
         .debug("Page {}: {} lines, confidence {}%", pageNumber, lines.size(),
           confidence);
-      pages.add(new EasementPage(pageNumber, lines, confidence));
+
+      pages
+        .add(new EasementPage(pageNumber, lines, confidence,
+          aiService.getClass().getSimpleName(), aiService.getModel()));
     }
 
     EasementDoc doc = new EasementDoc();

@@ -176,7 +176,9 @@ public class EasementReprocessingTask {
         }
 
         log.debug("Page {}: {} lines, confidence {}%", i, lines.size(), confidence);
-        pages.add(new EasementPage(i, lines, confidence));
+        pages
+          .add(new EasementPage(i, lines, confidence,
+            aiService.getClass().getSimpleName(), aiService.getModel()));
 
       } catch (IOException e) {
         log

@@ -17,16 +17,33 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class EasementPage {
 
-  /** 1-based page index within the source PDF. */
+  /**
+   * 1-based page index within the source PDF.
+   */
   private int pageNumber;
 
-  /** Non-blank text lines extracted by Tesseract from this page. */
+  /**
+   * Non-blank text lines extracted from this page.
+   */
   private List<String> lines;
 
   /**
-   * Mean Tesseract word-level confidence for this page (0–100).
-   * Derived from {@code getWords(RIL_WORD)} after {@code doOCR()}.
+   * AI confidence score for this page (0–100).
    */
   private float confidence;
+
+  /**
+   * Simple class name of the {@link org.gpc4j.easements.services.AIService}
+   * implementation that extracted this page's text, e.g.
+   * {@code GeminiService}. May differ from the document-level value when a
+   * per-page fallback (e.g. RECITATION handling) used a different provider.
+   */
+  private String aiServiceName;
+
+  /**
+   * Model identifier reported by the AI service for this page, e.g.
+   * {@code gemini-3.1-flash-lite} or {@code claude-haiku-4-5-20251001}.
+   */
+  private String aiModel;
 
 }
