@@ -3,6 +3,7 @@ package org.gpc4j.easements.services;
 import java.io.IOException;
 
 import org.gpc4j.easements.model.AIPrompt;
+import org.gpc4j.easements.model.AIResponse;
 
 /**
  * Contract for submitting prompts to an AI language model and returning the
@@ -28,7 +29,20 @@ public interface AIService {
    */
   String query(AIPrompt prompt) throws IOException;
 
-  //  AIResponse queryResponse(AIPrompt prompt) throws IOException;
+
+  /**
+   * Submits the specified {@code prompt} to the AI provider and returns a
+   * structured response containing metadata (e.g., AI service name, model
+   * identifier, and confidence score) along with the AI's text response.
+   *
+   * @param prompt the input payload including the textual prompt (required) and
+   *               an optional image; must not be null
+   * @return an {@link AIResponse} containing the AI's response, service name,
+   * model identifier, and confidence score; never null on success
+   * @throws IOException if the query fails due to network issues or if the
+   *                     provider returns an error
+   */
+  AIResponse queryResponse(AIPrompt prompt) throws IOException;
 
 
   /**

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.gpc4j.easements.model.AIPrompt;
+import org.gpc4j.easements.model.AIResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -87,12 +88,13 @@ public class GeminiService implements AIService {
   /**
    * {@inheritDoc}
    *
-   * <p>When {@link AIPrompt#getImage()} is non-null and non-empty the image
-   * bytes are base64-encoded and included as an {@code inlineData} part before
-   * the text part, enabling Gemini vision on the supplied image.
+   * <p>When Gemini returns a {@code RECITATION} finish reason the fallback
+   * {@link AnthropicService#queryResponse} result is returned unchanged so
+   * the {@link AIResponse#aiServiceName()} accurately reflects the provider
+   * that produced the text.
    */
   @Override
-  public String query(AIPrompt prompt) throws IOException {
+  public AIResponse queryResponse(AIPrompt prompt) throws IOException {
 
     List<Map<String, Object>> parts = new LinkedList<>();
 
@@ -127,7 +129,7 @@ public class GeminiService implements AIService {
 
     if ("RECITATION".equals(finishReason)) {
       log.warn("Gemini RECITATION; response: {}", response.body());
-      return anthropicService.query(prompt);
+      return anthropicService.queryResponse(prompt);
     }
 
     JsonNode text = root.at("/candidates/0/content/parts/0/text");
@@ -135,7 +137,21 @@ public class GeminiService implements AIService {
       throw new IOException(
         "Unexpected Gemini response structure: " + response.body());
     }
-    return text.asText();
+    return new AIResponse(text.asText(), getClass().getSimpleName(), MODEL, 0.0f);
+  }
+
+
+  /**
+   * {@inheritDoc}
+   *
+   * <p>When {@link AIPrompt#getImage()} is non-null and non-empty the image
+   * bytes are base64-encoded and included as an {@code inlineData} part before
+   * the text part, enabling Gemini vision on the supplied image.
+   */
+  @Override
+  public String query(AIPrompt prompt) throws IOException {
+
+    return queryResponse(prompt).text();
   }
 
 

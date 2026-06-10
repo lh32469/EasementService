@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.gpc4j.easements.model.AIPrompt;
+import org.gpc4j.easements.model.AIResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,6 +73,16 @@ public class AnthropicService implements AIService {
   public String getModel() {
 
     return MODEL;
+  }
+
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public AIResponse queryResponse(AIPrompt prompt) throws IOException {
+
+    return new AIResponse(query(prompt), getClass().getSimpleName(), MODEL, 0.0f);
   }
 
 
