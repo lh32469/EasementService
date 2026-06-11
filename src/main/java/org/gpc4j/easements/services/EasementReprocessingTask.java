@@ -81,7 +81,7 @@ public class EasementReprocessingTask {
   @Scheduled(fixedRate = 300_000)
   public void reprocessOne() {
 
-    log.info("Reprocessing task: searching for EasementDoc with no aiServiceName");
+    log.debug("Reprocessing task: searching for EasementDoc with no aiServiceName");
 
     try (IDocumentSession session = store.openSession()) {
 
@@ -102,7 +102,7 @@ public class EasementReprocessingTask {
         return;
       }
 
-      log.info("Reprocessing '{}'", doc.getId());
+      log.debug("Reprocessing '{}'", doc.getId());
       processDoc(session, doc);
       session.saveChanges();
       log

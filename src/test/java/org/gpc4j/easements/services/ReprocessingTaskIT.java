@@ -19,14 +19,13 @@ public class ReprocessingTaskIT {
   @Autowired
   IDocumentStore store;
 
-
   @Test
   public void testReprocessingTask() throws Exception {
 
     try (IDocumentSession session = store.openSession()) {
       EasementDoc doc = session
         .query(EasementDoc.class)
-//        .whereEquals("filename", "488.pdf")
+        //        .whereEquals("filename", "488.pdf")
         .whereEquals("filename", "13367.pdf")
         .firstOrDefault();
 
