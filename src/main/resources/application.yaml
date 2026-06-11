@@ -15,9 +15,9 @@ logging:
       controller:
         MovieController: INFO
     net.ravendb.client.documents.session.operations: WARN
-    org.gpc4j.easements.services.GeminiService: DEBUG
-    org.gpc4j.easements.services.OpenAIService: DEBUG
-    org.gpc4j.easements.services.AnthropicService: DEBUG
+    org.gpc4j.easements.services.GeminiService: INFO
+    org.gpc4j.easements.services.OpenAIService: INFO
+    org.gpc4j.easements.services.AnthropicService: INFO
 
 server:
   port: 8085
