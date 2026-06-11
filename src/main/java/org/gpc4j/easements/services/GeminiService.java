@@ -142,20 +142,6 @@ public class GeminiService implements AIService {
 
 
   /**
-   * {@inheritDoc}
-   *
-   * <p>When {@link AIPrompt#getImage()} is non-null and non-empty the image
-   * bytes are base64-encoded and included as an {@code inlineData} part before
-   * the text part, enabling Gemini vision on the supplied image.
-   */
-  @Override
-  public String query(AIPrompt prompt) throws IOException {
-
-    return queryResponse(prompt).text();
-  }
-
-
-  /**
    * Sends {@code request} and retries up to two times on a 503 response,
    * waiting two seconds between attempts. The Gemini API returns 503 under
    * momentary load spikes and asks callers to retry.

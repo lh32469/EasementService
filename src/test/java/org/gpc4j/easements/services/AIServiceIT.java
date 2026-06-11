@@ -53,7 +53,7 @@ class AIServiceIT {
 
     AIPrompt prompt = AIPrompt.builder().text(OCR_PROMPT).image(image).build();
 
-    String response = aiService.query(prompt);
+    String response = aiService.queryResponse(prompt).text();
 
     System.out.println("Gemini response:\n" + response);
     assertNotNull(response, "Response must not be null");
@@ -84,7 +84,7 @@ class AIServiceIT {
       .image(image)
       .build();
 
-    String response = aiService.query(prompt);
+    String response = aiService.queryResponse(prompt).text();
 
     System.out.println("Gemini response:\n" + response);
     assertNotNull(response, "Response must not be null");

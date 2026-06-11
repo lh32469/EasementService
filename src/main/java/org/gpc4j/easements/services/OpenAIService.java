@@ -72,23 +72,13 @@ public class OpenAIService implements AIService {
 
   /**
    * {@inheritDoc}
-   */
-  @Override
-  public AIResponse queryResponse(AIPrompt prompt) throws IOException {
-
-    return new AIResponse(query(prompt), getClass().getSimpleName(), MODEL, 0.0f);
-  }
-
-
-  /**
-   * {@inheritDoc}
    *
    * <p>When {@link AIPrompt#getImage()} is non-null and non-empty the image
    * bytes are base64-encoded and sent as an {@code image_url} content part
    * (data URI) before the text part, enabling GPT-4o vision.
    */
   @Override
-  public String query(AIPrompt prompt) throws IOException {
+  public AIResponse queryResponse(AIPrompt prompt) throws IOException {
 
     List<Map<String, Object>> content = new LinkedList<>();
 
@@ -141,7 +131,7 @@ public class OpenAIService implements AIService {
       throw new IOException(
         "Unexpected OpenAI response structure: " + response.body());
     }
-    return text.asText();
+    return new AIResponse(text.asText(), getClass().getSimpleName(), MODEL, 0.0f);
   }
 
 

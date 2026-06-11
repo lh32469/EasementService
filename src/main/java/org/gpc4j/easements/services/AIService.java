@@ -17,20 +17,6 @@ import org.gpc4j.easements.model.AIResponse;
 public interface AIService {
 
   /**
-   * Submits {@code prompt} to the AI provider and returns the full response
-   * text. When {@link AIPrompt#getImage()} is non-null and non-empty the
-   * image is included alongside the text, enabling vision-capable providers
-   * to analyse the image.
-   *
-   * @param prompt the text (and optional image) to send; must not be null
-   * @return the response text; never null or blank on success
-   * @throws IOException if the request cannot be completed or the provider
-   *                     returns an error response
-   */
-  String query(AIPrompt prompt) throws IOException;
-
-
-  /**
    * Submits the specified {@code prompt} to the AI provider and returns a
    * structured response containing metadata (e.g., AI service name, model
    * identifier, and confidence score) along with the AI's text response.

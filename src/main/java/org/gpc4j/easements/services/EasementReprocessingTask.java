@@ -140,7 +140,7 @@ public class EasementReprocessingTask {
     for (int i = 1; i <= totalPages; i++) {
       String attachmentName = "page-" + i + ".png";
       log
-        .info("Extracting text from attachment '{}' ({}/{})", attachmentName, i,
+        .debug("Extracting text from attachment '{}' ({}/{})", attachmentName, i,
           totalPages);
 
       try (CloseableAttachmentResult att = session
