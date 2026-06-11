@@ -52,8 +52,13 @@ public class EasementReprocessingTask {
   private static final Logger log = LoggerFactory
     .getLogger(EasementReprocessingTask.class);
 
+  private static final long QUOTA_PAUSE_MS = 10 * 60 * 1000L;
+
   private final IDocumentStore store;
   private final AIService aiService;
+
+  /** Epoch-ms timestamp before which reprocessing is suppressed after a 429. */
+  private volatile long pauseUntil = 0L;
 
   /**
    * Constructs the task with the RavenDB document store and the primary AI
@@ -80,6 +85,14 @@ public class EasementReprocessingTask {
    */
   @Scheduled(fixedRate = 300_000)
   public void reprocessOne() {
+
+    long now = System.currentTimeMillis();
+    if (now < pauseUntil) {
+      log
+        .debug("Reprocessing task paused for {} more seconds due to quota limit",
+          (pauseUntil - now) / 1000);
+      return;
+    }
 
     log.debug("Reprocessing task: searching for EasementDoc with no aiServiceName");
 
@@ -109,6 +122,9 @@ public class EasementReprocessingTask {
         .info("Reprocessed '{}': {} page(s) via {}/{}", doc.getId(),
           doc.getPageCount(), doc.getAiServiceName(), doc.getAiModel());
 
+    } catch (QuotaExceededException e) {
+      pauseUntil = System.currentTimeMillis() + QUOTA_PAUSE_MS;
+      log.warn("Gemini quota exceeded; pausing reprocessing for 10 minutes");
     } catch (Exception e) {
       log.error("Reprocessing task failed unexpectedly", e);
     }

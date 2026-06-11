@@ -164,6 +164,9 @@ public class GeminiService implements AIService {
       }
 
       log.debug("Gemini HTTP {}", response.statusCode());
+      if (response.statusCode() == 429) {
+        throw new QuotaExceededException("Gemini API error 429: " + response.body());
+      }
       if (response.statusCode() != 503 || ++attempts >= 3) {
         if (response.statusCode() != 200) {
           throw new IOException(
