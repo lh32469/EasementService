@@ -45,7 +45,7 @@ import net.ravendb.client.documents.session.IDocumentSession;
  * in local or test environments. Re-enable {@link EnableScheduling} on
  * {@link org.gpc4j.easements.EasementsApplication} to activate this task.
  */
-@Profile("k8s")
+@Profile({"k8s", "test"})
 @Component
 public class EasementReprocessingTask {
 

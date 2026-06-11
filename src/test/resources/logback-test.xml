@@ -6,7 +6,7 @@
   </appender>
 
   <logger name="org.gpc4j.easements.services.AIService" level="DEBUG"/>
-  <logger name="org.gpc4j.easements.services.EasementReprocessingTask" level="INFO"/>
+  <logger name="org.gpc4j.easements.services.EasementReprocessingTask" level="DEBUG"/>
 
   <root level="INFO">
     <appender-ref ref="STDOUT"/>

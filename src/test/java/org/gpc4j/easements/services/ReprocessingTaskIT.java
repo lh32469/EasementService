@@ -9,7 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 import net.ravendb.client.documents.IDocumentStore;
 import net.ravendb.client.documents.session.IDocumentSession;
 
-@ActiveProfiles("k8s")
+@ActiveProfiles("test")
 @SpringBootTest(properties = "ravendb.urls=http://192.168.0.5:8080")
 public class ReprocessingTaskIT {
 

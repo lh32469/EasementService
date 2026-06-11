@@ -16,7 +16,6 @@ import org.gpc4j.easements.model.AIResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -39,7 +38,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * response may recite copyrighted material) the same prompt is forwarded to
  * {@link AnthropicService} as a fallback so the page is not silently skipped.
  */
-@Primary
 @Service
 public class GeminiService implements AIService {
 
