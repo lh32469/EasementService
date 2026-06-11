@@ -192,6 +192,7 @@ public class EasementReprocessingTask {
         log
           .error("Failed to process page {} of '{}': {}", i, doc.getId(),
             e.getMessage());
+        throw e;
       }
     }
 
