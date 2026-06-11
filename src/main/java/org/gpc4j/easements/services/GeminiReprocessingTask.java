@@ -16,7 +16,7 @@ import org.gpc4j.easements.model.EasementPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import net.ravendb.client.documents.IDocumentStore;
@@ -25,52 +25,45 @@ import net.ravendb.client.documents.operations.attachments.CloseableAttachmentRe
 import net.ravendb.client.documents.session.IDocumentSession;
 
 /**
- * Daily background task that finds one {@link EasementDoc} whose
- * {@code aiServiceName} field is unset (legacy documents processed before AI
- * extraction was introduced) and reprocesses its page-image attachments through
- * {@link AIService}.
+ * Background task that finds one {@link EasementDoc} whose {@code aiServiceName}
+ * field is unset and reprocesses its page-image attachments specifically through
+ * {@link GeminiService}.
  *
- * <p>Each page attachment is fetched from RavenDB, submitted to the primary
- * {@link AIService} implementation for vision-based OCR, and the resulting text
- * lines and confidence score are stored back on the document. The
- * {@code aiServiceName} and {@code aiModel} fields are populated once all pages
- * have been processed, so a document is not marked as done unless the full
- * reprocessing succeeds.
+ * <p>Runs every 5 minutes from 1:00 AM to 8:55 AM Pacific time (96 invocations
+ * per day). Only one document is processed per run to avoid rate-limit pressure.
+ * On a Gemini 429 response the task pauses for 10 minutes before trying again.
  *
- * <p>Runs 100 times per day (every 864 seconds). Only one document is processed
- * per run to avoid long-running requests or rate-limit pressure against the AI
- * API.
- * Active only under the {@code k8s} Spring profile; the bean is not registered
- * in local or test environments. Re-enable {@link EnableScheduling} on
- * {@link org.gpc4j.easements.EasementsApplication} to activate this task.
+ * <p>Active only under the {@code k8s} or {@code test} Spring profile.
  */
 @Profile({"k8s", "test"})
 @Component
-public class EasementReprocessingTask {
+public class GeminiReprocessingTask {
 
   private static final Logger log = LoggerFactory
-    .getLogger(EasementReprocessingTask.class);
+    .getLogger(GeminiReprocessingTask.class);
 
   private static final long QUOTA_PAUSE_MS = 10 * 60 * 1000L;
 
   private final IDocumentStore store;
-  private final AIService aiService;
+  private final GeminiService geminiService;
 
   /** Epoch-ms timestamp before which reprocessing is suppressed after a 429. */
   private volatile long pauseUntil = 0L;
 
   /**
-   * Constructs the task with the RavenDB document store and the primary AI
-   * service implementation.
+   * Constructs the task with the RavenDB document store and the Gemini AI
+   * service.
    *
-   * @param store     the singleton RavenDB document store; sessions are opened
-   *                  per-run because this task runs outside an HTTP request scope
-   * @param aiService the AI vision service used to extract text from page images
+   * @param store          the singleton RavenDB document store; sessions are
+   *                       opened per-run because this task runs outside an HTTP
+   *                       request scope
+   * @param geminiService  the Gemini vision service used to extract text from
+   *                       page images
    */
-  public EasementReprocessingTask(IDocumentStore store, AIService aiService) {
+  public GeminiReprocessingTask(IDocumentStore store, GeminiService geminiService) {
 
     this.store = store;
-    this.aiService = aiService;
+    this.geminiService = geminiService;
   }
 
 
@@ -78,22 +71,23 @@ public class EasementReprocessingTask {
    * Selects one {@link EasementDoc} whose {@code aiServiceName} is unset,
    * delegates processing to {@link #processDoc}, and persists the result.
    *
-   * <p>Runs 288 times per day (every 5 minutes). Only one document is
-   * processed per invocation so that long multi-page jobs do not accumulate
-   * across runs.
+   * <p>Runs every 5 minutes from 1:00 AM to 8:55 AM Pacific time.
    */
-  // @Scheduled(fixedRate = 300_000)
+  @Scheduled(cron = "0 0/5 1-8 * * *", zone = "America/Los_Angeles")
   public void reprocessOne() {
 
     long now = System.currentTimeMillis();
     if (now < pauseUntil) {
       log
-        .debug("Reprocessing task paused for {} more seconds due to quota limit",
+        .debug(
+          "Gemini reprocessing task paused for {} more seconds due to quota limit",
           (pauseUntil - now) / 1000);
       return;
     }
 
-    log.debug("Reprocessing task: searching for EasementDoc with no aiServiceName");
+    log
+      .debug(
+        "Gemini reprocessing task: searching for EasementDoc with no aiServiceName");
 
     try (IDocumentSession session = store.openSession()) {
 
@@ -110,32 +104,32 @@ public class EasementReprocessingTask {
         .firstOrDefault();
 
       if (doc == null) {
-        log.info("Reprocessing task: all documents are up to date");
+        log.info("Gemini reprocessing task: all documents are up to date");
         return;
       }
 
-      log.debug("Reprocessing '{}'", doc.getId());
+      log.debug("Gemini reprocessing '{}'", doc.getId());
       processDoc(session, doc);
       session.saveChanges();
       log
-        .info("Reprocessed '{}': {} page(s) via {}/{}", doc.getId(),
+        .info("Gemini reprocessed '{}': {} page(s) via {}/{}", doc.getId(),
           doc.getPageCount(), doc.getAiServiceName(), doc.getAiModel());
 
     } catch (QuotaExceededException e) {
       pauseUntil = System.currentTimeMillis() + QUOTA_PAUSE_MS;
-      log.warn("Gemini quota exceeded; pausing reprocessing for 10 minutes");
+      log.warn("Gemini quota exceeded; pausing Gemini reprocessing for 10 minutes");
     } catch (Exception e) {
-      log.error("Reprocessing task failed unexpectedly", e);
+      log.error("Gemini reprocessing task failed unexpectedly", e);
     }
   }
 
 
   /**
    * Fetches each page-image attachment for {@code doc} from RavenDB, submits
-   * it to {@link AIService} for text extraction, and updates {@code doc} in
+   * it to {@link GeminiService} for text extraction, and updates {@code doc} in
    * place with the resulting {@link EasementPage} list and AI provenance fields.
    *
-   * <p>Individual page failures are logged and skipped. Throws
+   * <p>Individual page failures are logged and re-thrown. Throws
    * {@link IOException} if no pages could be extracted at all, leaving
    * {@code doc} unmodified so the caller can skip the save.
    *
@@ -178,10 +172,9 @@ public class EasementReprocessingTask {
           .image(imageBytes)
           .build();
 
-        AIResponse aiResponse = aiService.queryResponse(prompt);
+        AIResponse aiResponse = geminiService.queryResponse(prompt);
         log
-          .debug("Page {}: AI returned {} chars via {}", i,
-            aiResponse.text().length(), aiResponse.aiServiceName());
+          .debug("Page {}: Gemini returned {} chars", i, aiResponse.text().length());
 
         float confidence = 0f;
         List<String> lines = new LinkedList<>();
@@ -217,8 +210,8 @@ public class EasementReprocessingTask {
 
     doc.setPages(pages);
     doc.setPageCount(pages.size());
-    doc.setAiServiceName(aiService.getClass().getSimpleName());
-    doc.setAiModel(aiService.getModel());
+    doc.setAiServiceName(geminiService.getClass().getSimpleName());
+    doc.setAiModel(geminiService.getModel());
   }
 
 }
