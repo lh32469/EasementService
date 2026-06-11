@@ -74,11 +74,11 @@ public class EasementReprocessingTask {
    * Selects one {@link EasementDoc} whose {@code aiServiceName} is unset,
    * delegates processing to {@link #processDoc}, and persists the result.
    *
-   * <p>Runs 100 times per day (every 864 seconds). Only one document is
+   * <p>Runs 288 times per day (every 5 minutes). Only one document is
    * processed per invocation so that long multi-page jobs do not accumulate
    * across runs.
    */
-  @Scheduled(fixedRate = 864_000)
+  @Scheduled(fixedRate = 300_000)
   public void reprocessOne() {
 
     log.info("Reprocessing task: searching for EasementDoc with no aiServiceName");
