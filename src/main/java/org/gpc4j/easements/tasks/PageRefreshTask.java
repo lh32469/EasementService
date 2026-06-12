@@ -4,6 +4,7 @@ import static org.gpc4j.easements.controller.EasementController.CONFIDENCE_PATTE
 import static org.gpc4j.easements.controller.EasementController.OCR_PROMPT;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -70,10 +71,11 @@ public class PageRefreshTask {
    * Finds one {@link EasementDoc} with an incomplete {@link EasementPage},
    * delegates processing to {@link #refreshPage}, and persists the result.
    *
-   * <p>Waits 15 minutes after the previous invocation completes before running
-   * again, so concurrent executions cannot occur.
+   * <p>Delay is configured via {@code page-refresh.delay-minutes} (default
+   * 15 minutes). Waits that duration after each invocation completes before
+   * running again, so concurrent executions cannot occur.
    */
-  @Scheduled(fixedDelay = 900_000)
+  @Scheduled(fixedDelayString = "#{${page-refresh.delay-minutes:15} * 60000}")
   public void refreshOne() {
 
     long now = System.currentTimeMillis();
@@ -201,6 +203,7 @@ public class PageRefreshTask {
       page.setConfidence(confidence);
       page.setAiServiceName(aiResponse.aiServiceName());
       page.setAiModel(aiResponse.aiModel());
+      page.setDateTranscribed(Instant.now());
     }
   }
 

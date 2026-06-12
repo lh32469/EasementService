@@ -164,7 +164,7 @@ public class EasementController {
 
       pages
         .add(new EasementPage(pageNumber, lines, confidence,
-          aiResponse.aiServiceName(), aiResponse.aiModel()));
+          aiResponse.aiServiceName(), aiResponse.aiModel(), Instant.now()));
     }
 
     EasementDoc doc = new EasementDoc();

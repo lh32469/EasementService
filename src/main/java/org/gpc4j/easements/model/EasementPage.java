@@ -1,5 +1,6 @@
 package org.gpc4j.easements.model;
 
+import java.time.Instant;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -45,5 +46,11 @@ public class EasementPage {
    * {@code gemini-3.1-flash-lite} or {@code claude-haiku-4-5-20251001}.
    */
   private String aiModel;
+
+  /**
+   * UTC timestamp recorded when the page image was read and transcribed to
+   * text by the AI service.
+   */
+  private Instant dateTranscribed;
 
 }

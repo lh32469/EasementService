@@ -45,6 +45,10 @@ paddle:
     callback-url: https://easementservice.mcquarrie.cc/api/easement/import
     timeout-seconds: 120
 
+# PageRefreshTask schedule
+page-refresh:
+  delay-minutes: 10
+
 # Google Gemini API
 gemini:
   api:
