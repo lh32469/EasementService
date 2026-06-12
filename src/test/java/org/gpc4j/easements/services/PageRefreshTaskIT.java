@@ -1,6 +1,7 @@
 package org.gpc4j.easements.services;
 
 import org.gpc4j.easements.model.EasementDoc;
+import org.gpc4j.easements.tasks.PageRefreshTask;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

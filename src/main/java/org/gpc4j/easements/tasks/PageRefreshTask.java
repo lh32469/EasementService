@@ -1,4 +1,4 @@
-package org.gpc4j.easements.services;
+package org.gpc4j.easements.tasks;
 
 import static org.gpc4j.easements.controller.EasementController.CONFIDENCE_PATTERN;
 import static org.gpc4j.easements.controller.EasementController.OCR_PROMPT;
@@ -12,6 +12,8 @@ import org.gpc4j.easements.model.AIPrompt;
 import org.gpc4j.easements.model.AIResponse;
 import org.gpc4j.easements.model.EasementDoc;
 import org.gpc4j.easements.model.EasementPage;
+import org.gpc4j.easements.services.AIService;
+import org.gpc4j.easements.services.QuotaExceededException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
