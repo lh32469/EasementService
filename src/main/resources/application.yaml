@@ -10,14 +10,16 @@ logging:
   pattern:
     console: "%d{HH:mm:ss.SSS} %-5level %logger{30}.%M - %msg%n"
   level:
-    com.primefilter:
-      service: INFO
-      controller:
-        MovieController: INFO
-    net.ravendb.client.documents.session.operations: WARN
-    org.gpc4j.easements.services.GeminiService: INFO
-    org.gpc4j.easements.services.OpenAIService: INFO
-    org.gpc4j.easements.services.AnthropicService: INFO
+    net:
+      ravendb:
+        client:
+          documents:
+            session:
+              operations: WARN
+    org:
+      gpc4j:
+        easements:
+          services: DEBUG
 
 server:
   port: 8085
