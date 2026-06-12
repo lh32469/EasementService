@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: easementservice-config
+  labels:
+    app: easementservice
+data:
+  application.yml: |
+    foo: bar

@@ -25,3 +25,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config
+              mountPath: /usr/src/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: easementservice-config
