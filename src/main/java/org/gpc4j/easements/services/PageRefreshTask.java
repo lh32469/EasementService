@@ -33,7 +33,7 @@ import net.ravendb.client.documents.session.IDocumentSession;
  * per-page AI metadata. Only the first incomplete page found is updated per
  * invocation to limit AI API pressure.
  *
- * <p>Waits 5 minutes after each run before starting the next, preventing
+ * <p>Waits 1 hour after each run before starting the next, preventing
  * concurrent invocations. Active only under the {@code k8s} or {@code test}
  * Spring profile.
  */
@@ -70,10 +70,10 @@ public class PageRefreshTask {
    * Finds one {@link EasementDoc} with an incomplete {@link EasementPage},
    * delegates processing to {@link #refreshPage}, and persists the result.
    *
-   * <p>Waits 5 minutes after the previous invocation completes before running
+   * <p>Waits 1 hour after the previous invocation completes before running
    * again, so concurrent executions cannot occur.
    */
-  @Scheduled(fixedDelay = 300_000)
+  @Scheduled(fixedDelay = 3_600_000)
   public void refreshOne() {
 
     long now = System.currentTimeMillis();

@@ -173,8 +173,6 @@ public class EasementController {
     doc.setPages(pages);
     doc.setPageCount(pages.size());
     doc.setCreatedAt(Instant.now());
-    doc.setAiServiceName(aiService.getClass().getSimpleName());
-    doc.setAiModel(aiService.getModel());
 
     session.store(doc, filename);
 

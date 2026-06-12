@@ -25,17 +25,14 @@ import net.ravendb.client.documents.operations.attachments.CloseableAttachmentRe
 import net.ravendb.client.documents.session.IDocumentSession;
 
 /**
- * Daily background task that finds one {@link EasementDoc} whose
- * {@code aiServiceName} field is unset (legacy documents processed before AI
- * extraction was introduced) and reprocesses its page-image attachments through
- * {@link AIService}.
+ * Background task that finds one {@link EasementDoc} that has at least one
+ * {@link EasementPage} without per-page AI provenance and reprocesses all of
+ * its page-image attachments through {@link AIService}.
  *
  * <p>Each page attachment is fetched from RavenDB, submitted to the primary
  * {@link AIService} implementation for vision-based OCR, and the resulting text
- * lines and confidence score are stored back on the document. The
- * {@code aiServiceName} and {@code aiModel} fields are populated once all pages
- * have been processed, so a document is not marked as done unless the full
- * reprocessing succeeds.
+ * lines, confidence score, and AI provenance are stored on each
+ * {@link EasementPage}.
  *
  * <p>Runs 100 times per day (every 864 seconds). Only one document is processed
  * per run to avoid long-running requests or rate-limit pressure against the AI
@@ -75,8 +72,9 @@ public class EasementReprocessingTask {
 
 
   /**
-   * Selects one {@link EasementDoc} whose {@code aiServiceName} is unset,
-   * delegates processing to {@link #processDoc}, and persists the result.
+   * Selects one {@link EasementDoc} that has at least one {@link EasementPage}
+   * without AI provenance, delegates processing to {@link #processDoc}, and
+   * persists the result.
    *
    * <p>Runs 288 times per day (every 5 minutes). Only one document is
    * processed per invocation so that long multi-page jobs do not accumulate
@@ -93,19 +91,21 @@ public class EasementReprocessingTask {
       return;
     }
 
-    log.debug("Reprocessing task: searching for EasementDoc with no aiServiceName");
+    log.debug("Reprocessing task: searching for EasementDoc with incomplete pages");
 
     try (IDocumentSession session = store.openSession()) {
 
       EasementDoc doc = session
         .query(EasementDoc.class)
+        .whereExists("pages")
+        .andAlso()
         .openSubclause()
         .negateNext()
-        .whereExists("aiServiceName")
+        .whereExists("pages[].aiServiceName")
         .orElse()
-        .whereEquals("aiServiceName", (Object) null)
+        .whereEquals("pages[].aiServiceName", (Object) null)
         .orElse()
-        .whereEquals("aiServiceName", "")
+        .whereEquals("pages[].aiServiceName", "")
         .closeSubclause()
         .firstOrDefault();
 
@@ -117,9 +117,7 @@ public class EasementReprocessingTask {
       log.debug("Reprocessing '{}'", doc.getId());
       processDoc(session, doc);
       session.saveChanges();
-      log
-        .info("Reprocessed '{}': {} page(s) via {}/{}", doc.getId(),
-          doc.getPageCount(), doc.getAiServiceName(), doc.getAiModel());
+      log.info("Reprocessed '{}': {} page(s)", doc.getId(), doc.getPageCount());
 
     } catch (QuotaExceededException e) {
       pauseUntil = System.currentTimeMillis() + QUOTA_PAUSE_MS;
@@ -217,8 +215,6 @@ public class EasementReprocessingTask {
 
     doc.setPages(pages);
     doc.setPageCount(pages.size());
-    doc.setAiServiceName(aiService.getClass().getSimpleName());
-    doc.setAiModel(aiService.getModel());
   }
 
 }

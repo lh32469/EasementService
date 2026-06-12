@@ -16,7 +16,6 @@ import org.gpc4j.easements.model.EasementPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import net.ravendb.client.documents.IDocumentStore;
@@ -25,9 +24,9 @@ import net.ravendb.client.documents.operations.attachments.CloseableAttachmentRe
 import net.ravendb.client.documents.session.IDocumentSession;
 
 /**
- * Background task that finds one {@link EasementDoc} whose {@code aiServiceName}
- * field is unset and reprocesses its page-image attachments specifically through
- * {@link GeminiService}.
+ * Background task that finds one {@link EasementDoc} that has at least one
+ * {@link EasementPage} without per-page AI provenance and reprocesses all of
+ * its page-image attachments specifically through {@link GeminiService}.
  *
  * <p>Runs every 5 minutes from 1:00 AM to 8:55 AM Pacific time (96 invocations
  * per day). Only one document is processed per run to avoid rate-limit pressure.
@@ -68,12 +67,13 @@ public class GeminiReprocessingTask {
 
 
   /**
-   * Selects one {@link EasementDoc} whose {@code aiServiceName} is unset,
-   * delegates processing to {@link #processDoc}, and persists the result.
+   * Selects one {@link EasementDoc} that has at least one {@link EasementPage}
+   * without AI provenance, delegates processing to {@link #processDoc}, and
+   * persists the result.
    *
    * <p>Runs every 5 minutes from 1:00 AM to 8:55 AM Pacific time.
    */
-  @Scheduled(cron = "0 0/5 1-8 * * *", zone = "America/Los_Angeles")
+  //  @Scheduled(cron = "0 0/5 1-8 * * *", zone = "America/Los_Angeles")
   public void reprocessOne() {
 
     long now = System.currentTimeMillis();
@@ -87,19 +87,21 @@ public class GeminiReprocessingTask {
 
     log
       .debug(
-        "Gemini reprocessing task: searching for EasementDoc with no aiServiceName");
+        "Gemini reprocessing task: searching for EasementDoc with incomplete pages");
 
     try (IDocumentSession session = store.openSession()) {
 
       EasementDoc doc = session
         .query(EasementDoc.class)
+        .whereExists("pages")
+        .andAlso()
         .openSubclause()
         .negateNext()
-        .whereExists("aiServiceName")
+        .whereExists("pages[].aiServiceName")
         .orElse()
-        .whereEquals("aiServiceName", (Object) null)
+        .whereEquals("pages[].aiServiceName", (Object) null)
         .orElse()
-        .whereEquals("aiServiceName", "")
+        .whereEquals("pages[].aiServiceName", "")
         .closeSubclause()
         .firstOrDefault();
 
@@ -112,8 +114,8 @@ public class GeminiReprocessingTask {
       processDoc(session, doc);
       session.saveChanges();
       log
-        .info("Gemini reprocessed '{}': {} page(s) via {}/{}", doc.getId(),
-          doc.getPageCount(), doc.getAiServiceName(), doc.getAiModel());
+        .info("Gemini reprocessed '{}': {} page(s)", doc.getId(),
+          doc.getPageCount());
 
     } catch (QuotaExceededException e) {
       pauseUntil = System.currentTimeMillis() + QUOTA_PAUSE_MS;
@@ -210,8 +212,6 @@ public class GeminiReprocessingTask {
 
     doc.setPages(pages);
     doc.setPageCount(pages.size());
-    doc.setAiServiceName(geminiService.getClass().getSimpleName());
-    doc.setAiModel(geminiService.getModel());
   }
 
 }
