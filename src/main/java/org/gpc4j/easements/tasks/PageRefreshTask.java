@@ -30,12 +30,10 @@ import net.ravendb.client.documents.session.IDocumentSession;
  * blank, fetches the corresponding page-image attachment, submits it to
  * {@link AIService} for OCR, and updates the page in place with the response.
  *
- * <p>Unlike {@link EasementReprocessingTask}, which targets document-level
- * provenance, this task targets individual pages that slipped through without
- * per-page AI metadata. Only the first incomplete page found is updated per
- * invocation to limit AI API pressure.
+ * <p>Only the first incomplete page found is updated per invocation to limit
+ * AI API pressure.
  *
- * <p>Waits 1 hour after each run before starting the next, preventing
+ * <p>Waits 15 minutes after each run before starting the next, preventing
  * concurrent invocations. Active only under the {@code k8s} or {@code test}
  * Spring profile.
  */
@@ -72,10 +70,10 @@ public class PageRefreshTask {
    * Finds one {@link EasementDoc} with an incomplete {@link EasementPage},
    * delegates processing to {@link #refreshPage}, and persists the result.
    *
-   * <p>Waits 1 hour after the previous invocation completes before running
+   * <p>Waits 15 minutes after the previous invocation completes before running
    * again, so concurrent executions cannot occur.
    */
-  @Scheduled(fixedDelay = 3_600_000)
+  @Scheduled(fixedDelay = 900_000)
   public void refreshOne() {
 
     long now = System.currentTimeMillis();

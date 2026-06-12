@@ -41,7 +41,8 @@ public class PageRefreshTaskIT {
   @Test
   public void random() throws Exception {
 
-    //    task.refreshOne();
+    Thread.sleep(15000);
+    task.refreshOne();
 
   }
 

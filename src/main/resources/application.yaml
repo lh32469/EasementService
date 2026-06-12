@@ -48,7 +48,10 @@ paddle:
 # Google Gemini API
 gemini:
   api:
-    key: ENC(7oRGt4x1erghhbAZ4EcYBE52cnngXKGapDafW4pL77/NXVb49aWn8a3WH8qc30QXs+l1FAwT+2dZ+921k/vLna8UIV4NXgkNEupfL+jkrSE6cIzZh5KN3+lD2L8mPpHp)
+    keys:
+      - ENC(IdrCoLGWnMsFio5h5FQoSnuOCXgXP4SGZBPLwc83Er5qzwqkWowoQ6zeG4+Fzf/eodr3hvDZG2Aj9krJ6DZhpmgYUDnhiZPIf+vR8VCxGkC4WjNQYR6aH0LPwcHTcfAh)
+      - ENC(7oRGt4x1erghhbAZ4EcYBE52cnngXKGapDafW4pL77/NXVb49aWn8a3WH8qc30QXs+l1FAwT+2dZ+921k/vLna8UIV4NXgkNEupfL+jkrSE6cIzZh5KN3+lD2L8mPpHp)
+      - ENC(IdrCoLGWnMsFio5h5FQoSnuOCXgXP4SGZBPLwc83Er5qzwqkWowoQ6zeG4+Fzf/eodr3hvDZG2Aj9krJ6DZhpmgYUDnhiZPIf+vR8VCxGkC4WjNQYR6aH0LPwcHTcfAh)
 
 # OpenAI API
 openai:

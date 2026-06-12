@@ -5,7 +5,9 @@
     </encoder>
   </appender>
 
+  <logger name="org.gpc4j.easements.services" level="DEBUG"/>
   <logger name="org.gpc4j.easements.services.AIService" level="DEBUG"/>
+  <logger name="org.gpc4j.easements.services.GeminiService" level="DEBUG"/>
   <logger name="org.gpc4j.easements.tasks.PageRefreshTask" level="DEBUG"/>
 
   <root level="INFO">

@@ -23,7 +23,7 @@ class GeminiModelsIT {
 
   private static final String MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
-  @Value("${gemini.api.key}")
+  @Value("${gemini.api.keys[0]}")
   private String apiKey;
 
   /**

@@ -7,15 +7,16 @@ import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.gpc4j.easements.model.AIPrompt;
 import org.gpc4j.easements.model.AIResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +32,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * the text prompt, enabling Gemini's vision capabilities. PNG and JPEG
  * formats are auto-detected from the image byte header.
  *
- * <p>The API key is read from the {@code gemini.api.key} application property.
+ * <p>API keys are read from the {@code gemini.api.key} and optional
+ * {@code gemini.api.key2} application properties. When both are configured,
+ * keys are rotated round-robin across requests to distribute quota usage.
  * The HTTP client is forced to HTTP/1.1 to avoid 503 responses the Gemini API
  * returns for large multimodal payloads over HTTP/2.
  *
@@ -53,22 +56,22 @@ public class GeminiService implements AIService {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final HttpClient http;
-  private final String apiKey;
+  private final List<String> apiKeys;
+  private final AtomicInteger keyIndex = new AtomicInteger(0);
   private final AnthropicService anthropicService;
 
   /**
-   * Creates the service with the given Gemini API key and Anthropic fallback.
+   * Creates the service with the Gemini key list and Anthropic fallback.
    *
-   * @param apiKey           the {@code X-goog-api-key} header value sent with
-   *                         every request to the Gemini API
+   * @param properties       bound configuration supplying the list of API keys
    * @param anthropicService fallback service used when Gemini returns a
    *                         {@code RECITATION} finish reason with no partial
    *                         text
    */
-  public GeminiService(@Value("${gemini.api.key}") String apiKey,
+  public GeminiService(GeminiProperties properties,
     AnthropicService anthropicService) {
 
-    this.apiKey = apiKey;
+    this.apiKeys = Collections.unmodifiableList(properties.getKeys());
     this.anthropicService = anthropicService;
     // HTTP/1.1 avoids 503s the Gemini API returns for large payloads over HTTP/2
     this.http = HttpClient.newBuilder().version(Version.HTTP_1_1).build();
@@ -114,11 +117,13 @@ public class GeminiService implements AIService {
     String requestJson = MAPPER.writeValueAsString(body);
     log.debug("Sending Gemini request ({} chars)", requestJson.length());
 
+    String key = nextKey();
+
     HttpRequest request = HttpRequest
       .newBuilder()
       .uri(URI.create(GEMINI_URL))
       .header("Content-Type", "application/json")
-      .header("X-goog-api-key", apiKey)
+      .header("X-goog-api-key", key)
       .POST(HttpRequest.BodyPublishers.ofString(requestJson))
       .build();
 
@@ -138,6 +143,20 @@ public class GeminiService implements AIService {
         "Unexpected Gemini response structure: " + response.body());
     }
     return new AIResponse(text.asText(), getClass().getSimpleName(), MODEL, 0.0f);
+  }
+
+
+  /**
+   * Returns the next API key in the rotation, cycling through all configured
+   * keys round-robin.
+   *
+   * @return the next key to use for the {@code X-goog-api-key} header
+   */
+  private String nextKey() {
+
+    int idx = Math.abs(keyIndex.getAndIncrement() % apiKeys.size());
+    log.debug("Using key {}", idx);
+    return apiKeys.get(idx);
   }
 
 
