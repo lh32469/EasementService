@@ -72,7 +72,7 @@ public class GeminiService implements AIService {
     AnthropicService anthropicService) {
 
     this.apiKeys = Collections.unmodifiableList(properties.getKeys());
-    log.info("GeminiService initializing with keys {}", apiKeys.size());
+    log.info("GeminiService initializing with {} keys", apiKeys.size());
     this.anthropicService = anthropicService;
     // HTTP/1.1 avoids 503s the Gemini API returns for large payloads over HTTP/2
     this.http = HttpClient.newBuilder().version(Version.HTTP_1_1).build();
