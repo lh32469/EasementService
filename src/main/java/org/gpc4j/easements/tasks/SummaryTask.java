@@ -52,9 +52,15 @@ public class SummaryTask {
 
     try (IDocumentSession session = store.openSession()) {
 
-      List<EasementDoc> docs = session.query(EasementDoc.class).toList();
+      int totalPages = session
+        .query(EasementDoc.class)
+        .selectFields(Integer.class, "pageCount")
+        .toList()
+        .stream()
+        .mapToInt(i -> i == null ? 0 : i)
+        .sum();
 
-      int totalPages = docs.stream().mapToInt(EasementDoc::getPageCount).sum();
+      List<EasementDoc> docs = session.query(EasementDoc.class).toList();
 
       long processedPages = docs
         .stream()
