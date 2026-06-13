@@ -72,13 +72,14 @@ public class PageRefreshTask {
 
   /**
    * Finds one {@link EasementDoc} with an incomplete {@link EasementPage},
-   * delegates processing to {@link #refreshPage}, and persists the result.
+   * delegates to {@link #processDoc}, and persists the result.
    *
    * <p>Delay is configured via {@code page-refresh.delay-minutes} (default
    * 15 minutes). Waits that duration after each invocation completes before
    * running again, so concurrent executions cannot occur.
    */
-  @Scheduled(fixedDelayString = "#{${page-refresh.delay-minutes:15} * 60000}")
+  @Scheduled(initialDelay = 60_000, // For IT Tests
+    fixedDelayString = "#{${page-refresh.delay-minutes:15} * 60000}")
   public void refreshOne() {
 
     long now = System.currentTimeMillis();
@@ -112,47 +113,7 @@ public class PageRefreshTask {
         return;
       }
 
-      if (doc.getPages() == null || doc.getPages().isEmpty()) {
-        log.debug("PageRefreshTask: '{}' has no pages to refresh", doc.getId());
-
-        // Populate blank pages on this run based on attachments
-        AttachmentName[] attachmentNames = session
-          .advanced()
-          .attachments()
-          .getNames(doc);
-
-        doc.setPages(new LinkedList<>());
-
-        for (int i = 0; i < attachmentNames.length; i++) {
-          EasementPage page = new EasementPage();
-          page.setPageNumber(i + 1);
-          log.debug("Adding blank page {}", page);
-          doc.getPages().add(page);
-        }
-
-      }
-
-      EasementPage page = doc
-        .getPages()
-        .stream()
-        .filter(p -> p.getAiServiceName() == null || p.getAiServiceName().isBlank())
-        .findFirst()
-        .orElse(null);
-
-      if (page == null) {
-        log
-          .debug("PageRefreshTask: no incomplete page found in '{}' (index stale?)",
-            doc.getId());
-        return;
-      }
-
-      log.debug("Refreshing page {} of '{}'", page.getPageNumber(), doc.getId());
-      refreshPage(session, doc, page);
-      session.saveChanges();
-      log
-        .info("Refreshed page {}/{} of '{}' via {}/{}", page.getPageNumber(),
-          doc.getPageCount(), doc.getId(), page.getAiServiceName(),
-          page.getAiModel());
+      processDoc(session, doc);
 
     } catch (QuotaExceededException e) {
       pauseUntil = System.currentTimeMillis() + QUOTA_PAUSE_MS;
@@ -160,6 +121,62 @@ public class PageRefreshTask {
     } catch (Exception e) {
       log.error("PageRefreshTask failed unexpectedly", e);
     }
+  }
+
+
+  /**
+   * Ensures {@code doc} has a populated {@link EasementPage} list, finds the
+   * first page lacking AI provenance, transcribes it, and saves the session.
+   *
+   * <p>If {@code doc.pages} is null or empty, blank {@link EasementPage}
+   * stubs are created from the document's attachments so the task can process
+   * them one per invocation.
+   *
+   * @param session open RavenDB session
+   * @param doc     the document to process; mutated in place
+   * @throws IOException if the attachment fetch or AI call fails
+   */
+  void processDoc(IDocumentSession session, EasementDoc doc) throws IOException {
+
+    if (doc.getPages() == null || doc.getPages().isEmpty()) {
+      log
+        .debug("PageRefreshTask: '{}' has no pages — initialising from attachments",
+          doc.getId());
+
+      AttachmentName[] attachmentNames = session
+        .advanced()
+        .attachments()
+        .getNames(doc);
+
+      List<EasementPage> stubs = new LinkedList<>();
+      for (int i = 0; i < attachmentNames.length; i++) {
+        EasementPage stub = new EasementPage();
+        stub.setPageNumber(i + 1);
+        stubs.add(stub);
+      }
+      doc.setPages(stubs);
+    }
+
+    EasementPage page = doc
+      .getPages()
+      .stream()
+      .filter(p -> p.getAiServiceName() == null || p.getAiServiceName().isBlank())
+      .findFirst()
+      .orElse(null);
+
+    if (page == null) {
+      log
+        .debug("PageRefreshTask: no incomplete page found in '{}' (index stale?)",
+          doc.getId());
+      return;
+    }
+
+    log.debug("Refreshing page {} of '{}'", page.getPageNumber(), doc.getId());
+    refreshPage(session, doc, page);
+    session.saveChanges();
+    log
+      .info("Refreshed page {}/{} of '{}' via {}/{}", page.getPageNumber(),
+        doc.getPageCount(), doc.getId(), page.getAiServiceName(), page.getAiModel());
   }
 
 

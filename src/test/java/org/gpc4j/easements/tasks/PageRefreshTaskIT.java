@@ -1,7 +1,6 @@
-package org.gpc4j.easements.services;
+package org.gpc4j.easements.tasks;
 
 import org.gpc4j.easements.model.EasementDoc;
-import org.gpc4j.easements.tasks.PageRefreshTask;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,8 +29,7 @@ public class PageRefreshTaskIT {
         .whereEquals("filename", "1081.pdf")
         .firstOrDefault();
 
-      //      Thread.sleep(15000);
-      //            task.r(session, doc);
+      task.processDoc(session, doc);
 
       session.saveChanges();
     }
