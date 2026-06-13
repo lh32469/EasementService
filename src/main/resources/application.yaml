@@ -49,7 +49,7 @@ paddle:
 
 # PageRefreshTask schedule
 page-refresh:
-  delay-minutes: 1
+  delay-seconds: 42  # About 2000 times a day
 
 # Google Gemini API
 gemini:

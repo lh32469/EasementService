@@ -74,12 +74,12 @@ public class PageRefreshTask {
    * Finds one {@link EasementDoc} with an incomplete {@link EasementPage},
    * delegates to {@link #processDoc}, and persists the result.
    *
-   * <p>Delay is configured via {@code page-refresh.delay-minutes} (default
-   * 15 minutes). Waits that duration after each invocation completes before
+   * <p>Delay is configured via {@code page-refresh.delay-seconds} (default
+   * 60 seconds). Waits that duration after each invocation completes before
    * running again, so concurrent executions cannot occur.
    */
   @Scheduled(initialDelay = 60_000, // For IT Tests
-    fixedDelayString = "#{${page-refresh.delay-minutes:15} * 60000}")
+    fixedDelayString = "#{${page-refresh.delay-seconds:60} * 1000}")
   public void refreshOne() {
 
     long now = System.currentTimeMillis();
