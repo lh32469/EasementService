@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
 import org.gpc4j.easements.model.AIPrompt;
@@ -79,7 +80,7 @@ public class PageRefreshTask {
    * running again, so concurrent executions cannot occur.
    */
   @Scheduled(initialDelay = 60_000, // For IT Tests
-    fixedDelayString = "#{${page-refresh.delay-minutes:15} * 60000}")
+    timeUnit = TimeUnit.SECONDS, fixedDelayString = "#{${page-refresh.delay-minutes:15} * 60000}")
   public void refreshOne() {
 
     long now = System.currentTimeMillis();
