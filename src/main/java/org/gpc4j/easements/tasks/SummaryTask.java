@@ -65,11 +65,12 @@ public class SummaryTask {
 
       long remainingPages = totalPages - processedPages;
 
-      float pct = totalPages > 0 ? (processedPages * 100.0f / totalPages) : 0f;
+      String pct = totalPages > 0
+        ? String.format("%.1f", processedPages * 100.0f / totalPages) : "0.0";
 
       log
         .info(
-          "Transcription progress: {}/{} pages complete ({:.1f}%), {} remaining"
+          "Transcription progress: {}/{} pages complete ({}%), {} remaining"
             + " across {} documents",
           processedPages, totalPages, pct, remainingPages, docs.size());
 
