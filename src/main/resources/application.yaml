@@ -49,7 +49,7 @@ paddle:
 
 # PageRefreshTask schedule
 page-refresh:
-  delay-minutes: 2
+  delay-minutes: 1
 
 # Google Gemini API
 gemini:
