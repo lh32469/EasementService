@@ -49,7 +49,7 @@ paddle:
 
 # PageRefreshTask schedule
 page-refresh:
-  delay-minutes: 5
+  delay-minutes: 2
 
 # Google Gemini API
 gemini:
@@ -57,7 +57,6 @@ gemini:
     keys:
       - ENC(IdrCoLGWnMsFio5h5FQoSnuOCXgXP4SGZBPLwc83Er5qzwqkWowoQ6zeG4+Fzf/eodr3hvDZG2Aj9krJ6DZhpmgYUDnhiZPIf+vR8VCxGkC4WjNQYR6aH0LPwcHTcfAh)
       - ENC(7oRGt4x1erghhbAZ4EcYBE52cnngXKGapDafW4pL77/NXVb49aWn8a3WH8qc30QXs+l1FAwT+2dZ+921k/vLna8UIV4NXgkNEupfL+jkrSE6cIzZh5KN3+lD2L8mPpHp)
-      - ENC(IdrCoLGWnMsFio5h5FQoSnuOCXgXP4SGZBPLwc83Er5qzwqkWowoQ6zeG4+Fzf/eodr3hvDZG2Aj9krJ6DZhpmgYUDnhiZPIf+vR8VCxGkC4WjNQYR6aH0LPwcHTcfAh)
       - ENC(n2dWVl50u9+VC1zxCYkIFK8HfInB5JyDwzPNsDJMOwlrQqIBt5Dv8xhl/fNVpqw9VHiCEDCvZSPHA+nQIg3/+GjkymgboWwpQu7UlCjbx667IItDYBynByRle6kMTtW5)
 
 # OpenAI API

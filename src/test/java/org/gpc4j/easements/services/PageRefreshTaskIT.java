@@ -27,10 +27,11 @@ public class PageRefreshTaskIT {
       EasementDoc doc = session
         .query(EasementDoc.class)
         //        .whereEquals("filename", "488.pdf")
-        .whereEquals("filename", "13367.pdf")
+        .whereEquals("filename", "1081.pdf")
         .firstOrDefault();
 
-      //      task.re(session, doc);
+      //      Thread.sleep(15000);
+      //            task.r(session, doc);
 
       session.saveChanges();
     }
@@ -41,8 +42,8 @@ public class PageRefreshTaskIT {
   @Test
   public void random() throws Exception {
 
-    Thread.sleep(15000);
-    task.refreshOne();
+    //    Thread.sleep(15000);
+    //    task.refreshOne();
 
   }
 

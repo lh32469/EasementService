@@ -22,6 +22,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import net.ravendb.client.documents.IDocumentStore;
+import net.ravendb.client.documents.operations.attachments.AttachmentName;
 import net.ravendb.client.documents.operations.attachments.CloseableAttachmentResult;
 import net.ravendb.client.documents.session.IDocumentSession;
 
@@ -49,7 +50,9 @@ public class PageRefreshTask {
   private final IDocumentStore store;
   private final AIService aiService;
 
-  /** Epoch-ms timestamp before which processing is suppressed after a 429. */
+  /**
+   * Epoch-ms timestamp before which processing is suppressed after a 429.
+   */
   private volatile long pauseUntil = 0L;
 
   /**
@@ -111,7 +114,22 @@ public class PageRefreshTask {
 
       if (doc.getPages() == null || doc.getPages().isEmpty()) {
         log.debug("PageRefreshTask: '{}' has no pages to refresh", doc.getId());
-        return;
+
+        // Populate blank pages on this run based on attachments
+        AttachmentName[] attachmentNames = session
+          .advanced()
+          .attachments()
+          .getNames(doc);
+
+        doc.setPages(new LinkedList<>());
+
+        for (int i = 0; i < attachmentNames.length; i++) {
+          EasementPage page = new EasementPage();
+          page.setPageNumber(i + 1);
+          log.debug("Adding blank page {}", page);
+          doc.getPages().add(page);
+        }
+
       }
 
       EasementPage page = doc
